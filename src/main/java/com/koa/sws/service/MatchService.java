@@ -138,6 +138,7 @@ public class MatchService {
         String publisherId = getWaitingPublisher(subscriberSession);
         if (publisherId == null) {
             queueService.addToSubscribeQueue(myId);
+            log.info("-> after disconnected add subscriber queue: {}", myId);
         } else {
             match(publisherId, myId);
         }
@@ -145,19 +146,25 @@ public class MatchService {
 
     private WebSocketSession getWaitingSubscriber(WebSocketSession session) {
 
+        PeerSession peerSession = sessionService.getPeerSession(session.getId());
+
         String waitingSubscriberId = null;
         WebSocketSession subscriberSession = null;
+        boolean check = false;
         while (queueService.getSubscribeQueueSize() > 0 && !isSessionValid(subscriberSession)) {
             waitingSubscriberId = queueService.popFromSubscribeQueue();
             subscriberSession = sessionService.getSession(waitingSubscriberId);
 
-            if (!isPeerAvailable(waitingSubscriberId, session.getId())) {
+            if (!isPeerAvailable(waitingSubscriberId, peerSession.getPublishTo())) {
                 waitingSubscriberId = null;
+                check = true;
             }
         }
 
+        if (check) queueService.addToSubscribeQueue(peerSession.getPublishTo());
+
         if (waitingSubscriberId == null || subscriberSession == null) {
-            log.info("No waiting subscriber in subscribe queue");
+            log.info("❌ No waiting subscriber in subscribe queue");
             return null;
         }
         return subscriberSession;
@@ -165,19 +172,25 @@ public class MatchService {
 
     private String getWaitingPublisher(WebSocketSession session) {
 
+        PeerSession peerSession = sessionService.getPeerSession(session.getId());
+
         String waitingPublisherId = null;
         WebSocketSession publisherSession = null;
+        boolean check = false;
         while (queueService.getPublishQueueSize() > 0 && !isSessionValid(publisherSession)) {
             waitingPublisherId = queueService.popFromPublishQueue();
             publisherSession = sessionService.getSession(waitingPublisherId);
 
-            if (!isPeerAvailable(waitingPublisherId, session.getId())) {
+            if (!isPeerAvailable(waitingPublisherId, peerSession.getSubscribeFrom())) {
                 waitingPublisherId = null;
+                check = true;
             }
         }
 
+        if (check) queueService.addToPublishQueue(peerSession.getSubscribeFrom());
+
         if (waitingPublisherId == null || publisherSession == null) {
-            log.info("No publisher in publish queue");
+            log.info("❌ No publisher in publish queue");
             return null;
         }
 
