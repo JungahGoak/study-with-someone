@@ -49,7 +49,9 @@ public class SignalingWebSocketHandler extends TextWebSocketHandler {
                     matchService.relaySignalMessage(signalMessage);
                     break;
                 case LEAVE:
-                    matchService.unregisterPeer(session.getId());
+                    //matchService.unregisterPeer(session.getId());
+                    break;
+                case JOIN:
                     break;
                 default:
                     log.warn("Unknown message type: {}", signalMessage.getType());
@@ -66,7 +68,7 @@ public class SignalingWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        sessionService.remove(session.getId());
+        matchService.unregisterPeer(session.getId());
         log.info("🔴 DISCONNECTED: peerId={} status={}", session.getId(), status);
     }
 }

@@ -2,9 +2,11 @@ package com.koa.sws.service;
 
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RedisQueueService {
@@ -15,19 +17,25 @@ public class RedisQueueService {
     private static final String SUBSCRIBE_QUEUE = "sws:subscribeQueue";
 
     public void addToPublishQueue(String peerId) {
+        log.info("🔫 ADD Publisher queue: {}", peerId);
         enqueue(getPublishQueueName(), peerId);
     }
 
     public void addToSubscribeQueue(String peerId) {
+        log.info("🔫 ADD Subscriber queue: {}", peerId);
         enqueue(getSubscribeQueueName(), peerId);
     }
 
     public String popFromPublishQueue() {
-        return dequeue(getPublishQueueName());
+        String peerId = dequeue(getPublishQueueName());
+        log.info("🦷 POP Publisher queue: {}", peerId);
+        return peerId;
     }
 
     public String popFromSubscribeQueue() {
-        return dequeue(getSubscribeQueueName());
+        String peerId = dequeue(getSubscribeQueueName());
+        log.info("🦷 POP Subscriber queue: {}", peerId);
+        return peerId;
     }
 
     public Long getPublishQueueSize() {
