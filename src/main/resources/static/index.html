@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <title>Noop WebRTC Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        video { width: 45%; border: 1px solid #ccc; margin-right: 10px; }
+        #logs { white-space: pre-wrap; background: #eee; padding: 10px; height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+<h2>Noop WebRTC Client</h2>
+
+<div>
+    <button id="startBtn">Start Camera</button>
+</div>
+
+<div style="margin-top: 15px;">
+    <video id="localVideo" autoplay playsinline muted></video>
+    <video id="remoteVideo" autoplay playsinline></video>
+</div>
+
+<h3>Logs</h3>
+<div id="logs"></div>
+
+<script src="main.js"></script>
+</body>
+</html>

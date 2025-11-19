@@ -30,6 +30,18 @@ public class RedisQueueService {
         return dequeue(getSubscribeQueueName());
     }
 
+    public Long getPublishQueueSize() {
+        return getQueueSize(getPublishQueueName());
+    }
+
+    public Long getSubscribeQueueSize() {
+        return getQueueSize(getSubscribeQueueName());
+    }
+
+    private Long getQueueSize(String queue) {
+        return redisTemplate.opsForList().size(queue);
+    }
+
     private void enqueue(String queue, String peerId) {
         redisTemplate.opsForList().rightPush(queue, peerId);
     }
