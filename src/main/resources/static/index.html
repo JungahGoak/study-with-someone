@@ -524,13 +524,13 @@
        LEAVE handling & cleanup
        ====================================== */
     function handleLeave(msg) {
-        log("LEAVE from", msg.myId);
-        if (msg.myId === publisherId) {
+        log("LEAVE from", msg.targetId);
+        if (msg.targetId === publisherId) {
             // publisher left: close subscribePC
             closeSubscribePC();
             publisherId = null;
         }
-        if (msg.myId === subscriberId) {
+        if (msg.targetId === subscriberId) {
             // subscriber left: close publishPC
             closePublishPC();
             subscriberId = null;

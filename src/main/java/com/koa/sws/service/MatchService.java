@@ -62,8 +62,8 @@ public class MatchService {
         }
 
         // 2. Notice to publisher, subscriber and Rematch
-        unregisterMyPublisher(peerSession.getSubscribeFrom(), peerId);
-        unregisterMySubscriber(peerSession.getPublishTo(), peerId);
+        unregisterMyPublisher(peerSession.getPublishTo(), peerId);
+        unregisterMySubscriber(peerSession.getSubscribeFrom(), peerId);
 
         // 3. Remove mine in queue -> X (when pop, check the session avaible)
 
@@ -136,11 +136,11 @@ public class MatchService {
         sessionService.updatePublisher(subscriberId, null);
 
         String publisherId = getWaitingPublisher(subscriberSession);
-        if (publisherId == null) {
-            queueService.addToSubscribeQueue(myId);
-            log.info("-> after disconnected add subscriber queue: {}", myId);
+        if (publisherId != null) {
+            match(publisherId, subscriberId);
         } else {
-            match(publisherId, myId);
+            queueService.addToSubscribeQueue(subscriberId);
+            log.info("-> after disconnected add subscriber queue: {}", myId);
         }
     }
 
@@ -156,6 +156,7 @@ public class MatchService {
             subscriberSession = sessionService.getSession(waitingSubscriberId);
 
             if (!isPeerAvailable(waitingSubscriberId, peerSession.getPublishTo())) {
+                log.warn("peer is not availble : {} <-> {}" , waitingSubscriberId, peerSession.getPublishTo());
                 waitingSubscriberId = null;
                 check = true;
             }
@@ -182,6 +183,7 @@ public class MatchService {
             publisherSession = sessionService.getSession(waitingPublisherId);
 
             if (!isPeerAvailable(waitingPublisherId, peerSession.getSubscribeFrom())) {
+                log.warn("peer is not availble : {} <-> {}" , waitingPublisherId, peerSession.getPublishTo());
                 waitingPublisherId = null;
                 check = true;
             }

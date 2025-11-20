@@ -40,10 +40,12 @@ public class SessionService {
     }
 
     public WebSocketSession getSession(String peerId) {
+        if (peerId == null) return null;
         return websocketSessions.get(peerId);
     }
 
     public PeerSession getPeerSession(String peerId) {
+        if (peerId == null) return null;
         return peerSessions.get(peerId);
     }
 
