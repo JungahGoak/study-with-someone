@@ -229,7 +229,7 @@ public class MatchService {
     }
 
     private boolean isPeerAvailable(String targetPeerId, String myPeerId) {
-        return targetPeerId != null && !targetPeerId.equals(myPeerId);
+        return targetPeerId != null && myPeerId != null && !targetPeerId.equals(myPeerId);
     }
 
     private boolean isSessionValid(WebSocketSession session) {
