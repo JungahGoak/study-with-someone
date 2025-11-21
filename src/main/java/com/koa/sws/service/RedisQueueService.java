@@ -1,6 +1,6 @@
 package com.koa.sws.service;
 
-
+import com.koa.sws.aop.DistributedLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -26,12 +26,14 @@ public class RedisQueueService {
         enqueue(getSubscribeQueueName(), peerId);
     }
 
+    @DistributedLock(key = "'publishQueue'")
     public String popFromPublishQueue() {
         String peerId = dequeue(getPublishQueueName());
         log.info("🦷 POP Publisher queue: {}", peerId);
         return peerId;
     }
 
+    @DistributedLock(key = "'subscribeQueue'")
     public String popFromSubscribeQueue() {
         String peerId = dequeue(getSubscribeQueueName());
         log.info("🦷 POP Subscriber queue: {}", peerId);
