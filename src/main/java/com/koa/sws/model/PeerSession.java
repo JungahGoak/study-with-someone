@@ -19,4 +19,12 @@ public class PeerSession {
     public void setPublisher(String publisherId) {
         this.publishTo = publisherId;
     }
+
+    public String getSubscriber() {
+        return this.subscribeFrom;
+    }
+
+    public String getPublisher() {
+        return this.publishTo;
+    }
 }

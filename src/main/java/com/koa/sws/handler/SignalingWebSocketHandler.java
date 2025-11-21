@@ -25,7 +25,7 @@ public class SignalingWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         String peerId = sessionService.register(session);
-        log.info("⭐ CONNECTED: peerId={} sessionId={}", peerId, session.getId());
+        log.info("⭐ CONNECTED: peerId={}", peerId);
 
         matchService.registerPeer(session);
     }
