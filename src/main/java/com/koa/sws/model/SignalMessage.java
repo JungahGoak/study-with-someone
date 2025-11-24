@@ -6,9 +6,15 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class SignalMessage {
-    private String type;   // "JOIN", "OFFER", "ANSWER"
-    private String peerId;
+    private MessageType type;   // "JOIN", "OFFER", "ANSWER"
+    private String myId;
+    private String targetId;
     private String data;
+
+    public SignalMessage(MessageType messageType, String myId, String targetId) {
+        this.type = messageType;
+        this.myId = myId;
+        this.targetId = targetId;
+    }
 }
