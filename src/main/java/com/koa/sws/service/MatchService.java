@@ -28,24 +28,36 @@ public class MatchService {
      */
     public void registerPeer(WebSocketSession session) {
 
-        String myId = session.getId();
-
         // 1. register as publisher
-        WebSocketSession subscriberSession = getWaitingSubscriber(session);
-        if (subscriberSession != null) {
-            match(myId, subscriberSession.getId());
-        }
+        log.info("🔗 Register as Publisher");
+        registerAsPublisher(session);
 
         // 2. register as subscriber
+        log.info("🔗 Register as Subscriber");
+        registerAsSubscriber(session);
+    }
+
+    public void registerAsPublisher(WebSocketSession session) {
+
+        String myId = session.getId();
+
+        WebSocketSession subscriberSession = getWaitingSubscriber(session);
+        if (subscriberSession == null) {
+            queueService.addToPublishQueue(myId);
+        } else {
+            match(myId, subscriberSession.getId());
+        }
+    }
+
+    public void registerAsSubscriber(WebSocketSession session) {
+
+        String myId = session.getId();
+
         String publisherId = getWaitingPublisher(session);
-        if (publisherId == null || (subscriberSession != null && publisherId.equals(subscriberSession.getId()))) {
+        if (publisherId == null) {
             queueService.addToSubscribeQueue(myId);
         } else {
             match(publisherId, myId);
-        }
-
-        if (subscriberSession == null) {
-            queueService.addToPublishQueue(myId);
         }
     }
 
@@ -66,7 +78,6 @@ public class MatchService {
         unregisterMySubscriber(peerSession.getSubscribeFrom(), peerId);
 
         // 3. Remove mine in queue -> X (when pop, check the session avaible)
-
     }
 
     /**
@@ -146,25 +157,39 @@ public class MatchService {
 
     private WebSocketSession getWaitingSubscriber(WebSocketSession session) {
 
+        // 1. get my peer session
         PeerSession peerSession = sessionService.getPeerSession(session.getId());
 
-        String waitingSubscriberId = null;
+        String subscriberId = null;
         WebSocketSession subscriberSession = null;
-        boolean check = false;
-        while (queueService.getSubscribeQueueSize() > 0 && !isSessionValid(subscriberSession)) {
-            waitingSubscriberId = queueService.popFromSubscribeQueue();
-            subscriberSession = sessionService.getSession(waitingSubscriberId);
 
-            if (!isPeerAvailable(waitingSubscriberId, peerSession.getPublishTo())) {
-                log.warn("peer is not availble : {} <-> {}" , waitingSubscriberId, peerSession.getPublishTo());
-                waitingSubscriberId = null;
-                check = true;
+        boolean needRestoreSubscriber = false;
+        boolean needResotoreMine = false;
+
+        // 2. check subscribe Queue
+        while (queueService.getSubscribeQueueSize() > 0 && !isSessionValid(subscriberSession)) {
+            subscriberId = queueService.popFromSubscribeQueue();
+            subscriberSession = sessionService.getSession(subscriberId);
+
+            // condition1) subscriber cannot be my subsciber as publisher.
+            if (peerSession.getPublisher() != null && !isPeerAvailable(subscriberId, peerSession.getPublisher())) {
+                log.warn("peer is not availble : {} <-> {}" , subscriberId, peerSession.getPublisher());
+                subscriberId = null;
+                needRestoreSubscriber = true;
             }
+
+            // condition2) subscriber cannot be myself.
+            if (subscriberId != null && subscriberId.equals(session.getId())) {
+                subscriberId = null;
+                needResotoreMine = true;
+            }
+
         }
 
-        if (check) queueService.addToSubscribeQueue(peerSession.getPublishTo());
+        if (needRestoreSubscriber) queueService.addToSubscribeQueue(peerSession.getPublishTo());
+        if (needResotoreMine) queueService.addToSubscribeQueue(session.getId());
 
-        if (waitingSubscriberId == null || subscriberSession == null) {
+        if (subscriberId == null || subscriberSession == null) {
             log.info("❌ No waiting subscriber in subscribe queue");
             return null;
         }
@@ -175,28 +200,37 @@ public class MatchService {
 
         PeerSession peerSession = sessionService.getPeerSession(session.getId());
 
-        String waitingPublisherId = null;
+        String publisherId = null;
         WebSocketSession publisherSession = null;
-        boolean check = false;
-        while (queueService.getPublishQueueSize() > 0 && !isSessionValid(publisherSession)) {
-            waitingPublisherId = queueService.popFromPublishQueue();
-            publisherSession = sessionService.getSession(waitingPublisherId);
 
-            if (!isPeerAvailable(waitingPublisherId, peerSession.getSubscribeFrom())) {
-                log.warn("peer is not availble : {} <-> {}" , waitingPublisherId, peerSession.getPublishTo());
-                waitingPublisherId = null;
-                check = true;
+        boolean needRestorePublisher = false;
+        boolean needRestoreMine = false;
+
+        while (queueService.getPublishQueueSize() > 0 && !isSessionValid(publisherSession)) {
+            publisherId = queueService.popFromPublishQueue();
+            publisherSession = sessionService.getSession(publisherId);
+
+            if (peerSession.getSubscriber() != null && !isPeerAvailable(publisherId, peerSession.getSubscriber())) {
+                log.warn("peer is not availble : {} <-> {}" , publisherId, peerSession.getSubscriber());
+                publisherId = null;
+                needRestorePublisher = true;
+            }
+
+            if (publisherId != null && publisherId.equals(session.getId())) {
+                publisherId = null;
+                needRestoreMine = true;
             }
         }
 
-        if (check) queueService.addToPublishQueue(peerSession.getSubscribeFrom());
+        if (needRestorePublisher) queueService.addToPublishQueue(peerSession.getSubscriber());
+        if (needRestoreMine) queueService.addToPublishQueue(session.getId());
 
-        if (waitingPublisherId == null || publisherSession == null) {
+        if (publisherId == null || publisherSession == null) {
             log.info("❌ No publisher in publish queue");
             return null;
         }
 
-        return waitingPublisherId;
+        return publisherId;
     }
 
     private void match(String publisherId, String subscriberId) {
@@ -229,7 +263,7 @@ public class MatchService {
     }
 
     private boolean isPeerAvailable(String targetPeerId, String myPeerId) {
-        return targetPeerId != null && !targetPeerId.equals(myPeerId);
+        return targetPeerId != null && myPeerId != null && !targetPeerId.equals(myPeerId);
     }
 
     private boolean isSessionValid(WebSocketSession session) {
