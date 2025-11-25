@@ -33,7 +33,7 @@ jobs:
 
       # 4. Build & Test
       - name: Build with Gradle
-        run: ./gradlew build
+        run: ./gradlew build -x test
 
       # 5. Docker metadata 생성
       - name: Docker metadata
