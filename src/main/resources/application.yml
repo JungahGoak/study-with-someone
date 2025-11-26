@@ -8,3 +8,6 @@ spring:
       port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD}
       timeout: ${REDIS_TIMEOUT:60000}
+
+front:
+  url: ${FRONT_URL}
