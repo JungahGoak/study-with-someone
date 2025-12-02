@@ -69,6 +69,6 @@ public class SignalingWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         matchService.unregisterPeer(session.getId());
-        log.info("🔴 DISCONNECTED: peerId={} status={}", session.getId(), status);
+        log.debug("🔴 DISCONNECTED: peerId={} status={}", session.getId(), status);
     }
 }

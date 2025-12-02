@@ -29,11 +29,11 @@ public class MatchService {
     public void registerPeer(WebSocketSession session) {
 
         // 1. register as publisher
-        log.info("🔗 Register as Publisher");
+        log.debug("🔗 Register as Publisher");
         registerAsPublisher(session);
 
         // 2. register as subscriber
-        log.info("🔗 Register as Subscriber");
+        log.debug("🔗 Register as Subscriber");
         registerAsSubscriber(session);
     }
 

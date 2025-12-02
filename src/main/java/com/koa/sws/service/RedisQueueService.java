@@ -17,26 +17,26 @@ public class RedisQueueService {
     private static final String SUBSCRIBE_QUEUE = "sws:subscribeQueue";
 
     public void addToPublishQueue(String peerId) {
-        log.info("🔫 ADD Publisher queue: {}", peerId);
+        log.debug("🔫 ADD Publisher queue: {}", peerId);
         enqueue(getPublishQueueName(), peerId);
     }
 
     public void addToSubscribeQueue(String peerId) {
-        log.info("🔫 ADD Subscriber queue: {}", peerId);
+        log.debug("🔫 ADD Subscriber queue: {}", peerId);
         enqueue(getSubscribeQueueName(), peerId);
     }
 
     @DistributedLock(key = "'publishQueue'")
     public String popFromPublishQueue() {
         String peerId = dequeue(getPublishQueueName());
-        log.info("🦷 POP Publisher queue: {}", peerId);
+        log.debug("🦷 POP Publisher queue: {}", peerId);
         return peerId;
     }
 
     @DistributedLock(key = "'subscribeQueue'")
     public String popFromSubscribeQueue() {
         String peerId = dequeue(getSubscribeQueueName());
-        log.info("🦷 POP Subscriber queue: {}", peerId);
+        log.debug("🦷 POP Subscriber queue: {}", peerId);
         return peerId;
     }
 
