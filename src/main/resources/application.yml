@@ -9,5 +9,8 @@ spring:
       password: ${REDIS_PASSWORD}
       timeout: ${REDIS_TIMEOUT:60000}
 
+websocket:
+  allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:3000,${FRONT_URL}}
+
 front:
   url: ${FRONT_URL}

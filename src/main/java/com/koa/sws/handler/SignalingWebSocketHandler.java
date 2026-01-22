@@ -1,6 +1,9 @@
 package com.koa.sws.handler;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.koa.sws.exception.InvalidMessageException;
+import com.koa.sws.exception.SessionException;
 import com.koa.sws.model.MessageType;
 import com.koa.sws.model.SignalMessage;
 import com.koa.sws.service.MatchService;
@@ -25,7 +28,7 @@ public class SignalingWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         String peerId = sessionService.register(session);
-        log.info("⭐ CONNECTED: peerId={}", peerId);
+        log.info("WebSocket connection established - peerId: {}, sessionId: {}", peerId, session.getId());
 
         matchService.registerPeer(session);
     }
@@ -33,42 +36,74 @@ public class SignalingWebSocketHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         try {
-            SignalMessage signalMessage = objectMapper.readValue(message.getPayload(), SignalMessage.class);
-
-            if (!session.isOpen()) {
-                log.warn("Received message from unopen session: {}", session.getId());
-                return;
-            }
-
+            validateSession(session);
+            SignalMessage signalMessage = parseAndValidateMessage(message);
             signalMessage.setMyId(session.getId());
-
-            switch (signalMessage.getType()) {
-                case OFFER:
-                case ANSWER:
-                case ICE:
-                    matchService.relaySignalMessage(signalMessage);
-                    break;
-                case LEAVE:
-                    //matchService.unregisterPeer(session.getId());
-                    break;
-                case JOIN:
-                    break;
-                default:
-                    log.warn("Unknown message type: {}", signalMessage.getType());
-                    matchService.sendMessage(session, new SignalMessage(MessageType.ERROR, session.getId(), null, "Unknown message type"));
-            }
+            processMessage(session, signalMessage);
+        } catch (InvalidMessageException e) {
+            log.warn("Invalid message received - sessionId: {}, error: {}", session.getId(), e.getMessage());
+            sendErrorResponse(session, "Invalid message format");
+        } catch (SessionException e) {
+            log.warn("Session error - sessionId: {}, error: {}", session.getId(), e.getMessage());
         } catch (Exception e) {
-            log.error("Error handling message", e);
+            log.error("Unexpected error handling message - sessionId: {}", session.getId(), e);
+            sendErrorResponse(session, "Internal server error");
+        }
+    }
 
-            if (session.isOpen())
-                matchService.sendMessage(session, new SignalMessage(MessageType.ERROR, session.getId(), null, "Failed message"));
+    private void validateSession(WebSocketSession session) throws SessionException {
+        if (session == null) {
+            throw new SessionException("Session is null");
+        }
+        if (!session.isOpen()) {
+            throw new SessionException("Session is closed: " + session.getId());
+        }
+    }
+
+    private SignalMessage parseAndValidateMessage(TextMessage message) throws InvalidMessageException {
+        if (message == null || message.getPayload() == null || message.getPayload().trim().isEmpty()) {
+            throw new InvalidMessageException("Message payload cannot be null or empty");
         }
 
+        try {
+            SignalMessage signalMessage = objectMapper.readValue(message.getPayload(), SignalMessage.class);
+
+            if (signalMessage == null || signalMessage.getType() == null) {
+                throw new InvalidMessageException("Message type is required");
+            }
+
+            return signalMessage;
+        } catch (JsonProcessingException e) {
+            throw new InvalidMessageException("Failed to parse message JSON", e);
+        }
+    }
+
+    private void processMessage(WebSocketSession session, SignalMessage signalMessage) {
+        switch (signalMessage.getType()) {
+            case OFFER:
+            case ANSWER:
+            case ICE:
+                matchService.relaySignalMessage(signalMessage);
+                break;
+            case JOIN:
+                log.debug("JOIN message received - sessionId: {}", session.getId());
+                break;
+            default:
+                log.warn("Unknown message type - sessionId: {}, type: {}", session.getId(), signalMessage.getType());
+                sendErrorResponse(session, "Unknown message type");
+        }
+    }
+
+    private void sendErrorResponse(WebSocketSession session, String errorMessage) {
+        if (session != null && session.isOpen()) {
+            matchService.sendMessage(session, new SignalMessage(MessageType.ERROR, session.getId(), null, errorMessage));
+        }
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         matchService.unregisterPeer(session.getId());
-        log.info("🔴 DISCONNECTED: peerId={} status={}", session.getId(), status);
+        log.info("WebSocket connection closed - peerId: {}, status: {}, reason: {}",
+                session.getId(), status.getCode(), status.getReason());
     }
 }
