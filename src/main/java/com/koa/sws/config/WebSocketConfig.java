@@ -13,14 +13,15 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketConfigurer {
 
-    @Value("${front.url}")
-    private String frontUrl;
+    @Value("${websocket.allowed-origins}")
+    private String allowedOrigins;
 
     private final SignalingWebSocketHandler signalingWebSocketHandler;
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        String[] origins = allowedOrigins.split(",");
         registry.addHandler(signalingWebSocketHandler, "/signal")
-                .setAllowedOrigins("http://localhost:3000", frontUrl);
+                .setAllowedOrigins(origins);
     }
 }
