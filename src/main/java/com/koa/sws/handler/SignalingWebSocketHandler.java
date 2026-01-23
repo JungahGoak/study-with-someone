@@ -44,6 +44,7 @@ public class SignalingWebSocketHandler extends TextWebSocketHandler {
             log.warn("Invalid message received - sessionId: {}, error: {}", session.getId(), e.getMessage());
             sendErrorResponse(session, "Invalid message format");
         } catch (SessionException e) {
+            // 세션이 null이거나 닫힌 상태이므로 에러 응답 전송 불가
             log.warn("Session error - sessionId: {}, error: {}", session.getId(), e.getMessage());
         } catch (Exception e) {
             log.error("Unexpected error handling message - sessionId: {}", session.getId(), e);
