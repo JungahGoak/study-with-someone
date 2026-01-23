@@ -31,11 +31,19 @@ public class SessionService {
 
     public void updatePublisher(String peerId, String publisherId) {
         PeerSession peerSession = peerSessions.get(peerId);
+        if (peerSession == null) {
+            log.warn("PeerSession not found for peerId: {}", peerId);
+            return;
+        }
         peerSession.setPublisher(publisherId);
     }
 
     public void updateSubscriber(String peerId, String subscriberId) {
         PeerSession peerSession = peerSessions.get(peerId);
+        if (peerSession == null) {
+            log.warn("PeerSession not found for peerId: {}", peerId);
+            return;
+        }
         peerSession.setSubscriber(subscriberId);
     }
 
