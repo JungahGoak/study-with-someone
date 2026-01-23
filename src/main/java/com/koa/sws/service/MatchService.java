@@ -164,8 +164,8 @@ public class MatchService {
         String peerToRestore = null;
         boolean needRestoreMine = false;
 
-        int maxRetries = 10;
-        int attempts = 0;
+        long maxRetries = queueType.getSize(queueService);
+        long attempts = 0;
 
         while (queueType.getSize(queueService) > 0 && !isSessionValid(candidateSession) && attempts < maxRetries) {
             candidateId = queueType.pop(queueService);
