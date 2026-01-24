@@ -3,6 +3,7 @@ package com.koa.sws.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.koa.sws.model.MessageType;
 import com.koa.sws.model.PeerSession;
+import com.koa.sws.model.QueueType;
 import com.koa.sws.model.SignalMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,11 +42,11 @@ public class MatchService {
 
         String myId = session.getId();
 
-        WebSocketSession subscriberSession = getWaitingSubscriber(session);
-        if (subscriberSession == null) {
+        String subscriberId = getWaitingSubscriber(session);
+        if (subscriberId == null) {
             queueService.addToPublishQueue(myId);
         } else {
-            match(myId, subscriberSession.getId());
+            match(myId, subscriberId);
         }
     }
 
@@ -121,9 +122,9 @@ public class MatchService {
         sendMessage(publisherSession, new SignalMessage(MessageType.LEAVE, publisherId, myId, "Subscriber has left session"));
         sessionService.updateSubscriber(publisherId, null);
 
-        WebSocketSession subscriberSession = getWaitingSubscriber(publisherSession);
-        if (subscriberSession != null) {
-            match(publisherId, subscriberSession.getId());
+        String subscriberId = getWaitingSubscriber(publisherSession);
+        if (subscriberId != null) {
+            match(publisherId, subscriberId);
         } else {
             queueService.addToPublishQueue(publisherId);
         }
@@ -155,82 +156,81 @@ public class MatchService {
         }
     }
 
-    private WebSocketSession getWaitingSubscriber(WebSocketSession session) {
-
-        // 1. get my peer session
-        PeerSession peerSession = sessionService.getPeerSession(session.getId());
-
-        String subscriberId = null;
-        WebSocketSession subscriberSession = null;
-
-        boolean needRestoreSubscriber = false;
-        boolean needResotoreMine = false;
-
-        // 2. check subscribe Queue
-        while (queueService.getSubscribeQueueSize() > 0 && !isSessionValid(subscriberSession)) {
-            subscriberId = queueService.popFromSubscribeQueue();
-            subscriberSession = sessionService.getSession(subscriberId);
-
-            // condition1) subscriber cannot be my subsciber as publisher.
-            if (peerSession.getPublisher() != null && !isPeerAvailable(subscriberId, peerSession.getPublisher())) {
-                log.warn("peer is not availble : {} <-> {}" , subscriberId, peerSession.getPublisher());
-                subscriberId = null;
-                needRestoreSubscriber = true;
-            }
-
-            // condition2) subscriber cannot be myself.
-            if (subscriberId != null && subscriberId.equals(session.getId())) {
-                subscriberId = null;
-                needResotoreMine = true;
-            }
-
-        }
-
-        if (needRestoreSubscriber) queueService.addToSubscribeQueue(peerSession.getPublishTo());
-        if (needResotoreMine) queueService.addToSubscribeQueue(session.getId());
-
-        if (subscriberId == null || subscriberSession == null) {
-            log.info("❌ No waiting subscriber in subscribe queue");
-            return null;
-        }
-        return subscriberSession;
+    private String getWaitingSubscriber(WebSocketSession session) {
+        WebSocketSession subscriberSession = getWaitingPeer(session, QueueType.SUBSCRIBER);
+        return subscriberSession != null ? subscriberSession.getId() : null;
     }
 
     private String getWaitingPublisher(WebSocketSession session) {
+        WebSocketSession publisherSession = getWaitingPeer(session, QueueType.PUBLISHER);
+        return publisherSession != null ? publisherSession.getId() : null;
+    }
 
-        PeerSession peerSession = sessionService.getPeerSession(session.getId());
+    /**
+     * 공통 큐 처리 로직
+     * @param session 현재 세션
+     * @param queueType 찾을 피어의 큐 타입 (PUBLISHER 또는 SUBSCRIBER)
+     * @return 매칭 가능한 피어의 세션, 없으면 null
+     */
+    private WebSocketSession getWaitingPeer(WebSocketSession session, QueueType queueType) {
+        PeerSession myPeerSession = sessionService.getPeerSession(session.getId());
+        String myId = session.getId();
 
-        String publisherId = null;
-        WebSocketSession publisherSession = null;
-
-        boolean needRestorePublisher = false;
+        String candidateId = null;
+        WebSocketSession candidateSession = null;
+        String peerToRestore = null;
         boolean needRestoreMine = false;
 
-        while (queueService.getPublishQueueSize() > 0 && !isSessionValid(publisherSession)) {
-            publisherId = queueService.popFromPublishQueue();
-            publisherSession = sessionService.getSession(publisherId);
+        int maxRetries = 10;
+        int attempts = 0;
 
-            if (peerSession.getSubscriber() != null && !isPeerAvailable(publisherId, peerSession.getSubscriber())) {
-                log.warn("peer is not availble : {} <-> {}" , publisherId, peerSession.getSubscriber());
-                publisherId = null;
-                needRestorePublisher = true;
+        while (queueType.getSize(queueService) > 0 && !isSessionValid(candidateSession) && attempts < maxRetries) {
+            candidateId = queueType.pop(queueService);
+            candidateSession = sessionService.getSession(candidateId);
+            attempts++;
+
+            // Validation 1: Cannot be connected to my existing peer (prevent circular dependency)
+            String myConnectedPeer = queueType.getConnectedPeer(myPeerSession);
+            if (myConnectedPeer != null && !isPeerAvailable(candidateId, myConnectedPeer)) {
+                log.warn("Peer not available due to circular dependency - candidate: {}, myConnectedPeer: {}",
+                        candidateId, myConnectedPeer);
+                peerToRestore = candidateId;
+                candidateId = null;
+                candidateSession = null;
+                continue;
             }
 
-            if (publisherId != null && publisherId.equals(session.getId())) {
-                publisherId = null;
+            // Validation 2: Cannot be myself (prevent self-matching)
+            if (candidateId != null && candidateId.equals(myId)) {
+                log.debug("Skipping self-match - peerId: {}", candidateId);
                 needRestoreMine = true;
+                candidateId = null;
+                candidateSession = null;
+                continue;
+            }
+
+            // If session is invalid, continue to next candidate
+            if (!isSessionValid(candidateSession)) {
+                log.debug("Invalid session found in queue - peerId: {}", candidateId);
+                candidateId = null;
+                candidateSession = null;
             }
         }
 
-        if (needRestorePublisher) queueService.addToPublishQueue(peerSession.getSubscriber());
-        if (needRestoreMine) queueService.addToPublishQueue(session.getId());
+        // Restore peers back to queue if needed
+        if (peerToRestore != null) {
+            queueType.add(queueService, peerToRestore);
+        }
+        if (needRestoreMine) {
+            queueType.add(queueService, myId);
+        }
 
-        if (publisherId == null || publisherSession == null) {
-            log.info("❌ No publisher in publish queue");
+        if (candidateId == null || candidateSession == null) {
+            log.info("❌ No waiting peer in {} queue", queueType);
             return null;
         }
 
-        return publisherId;
+        return candidateSession;
     }
 
     private void match(String publisherId, String subscriberId) {
