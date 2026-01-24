@@ -24,13 +24,8 @@ public class MatchService {
      * 2. as subscriber
      */
     public void registerPeer(WebSocketSession session) {
-
-        // 1. register as publisher
-        log.info("🔗 Register as Publisher");
+        log.info("Registering peer as publisher and subscriber - peerId: {}", session.getId());
         registerAsPublisher(session);
-
-        // 2. register as subscriber
-        log.info("🔗 Register as Subscriber");
         registerAsSubscriber(session);
     }
 
@@ -214,7 +209,7 @@ public class MatchService {
         }
 
         if (candidateId == null || candidateSession == null) {
-            log.info("❌ No waiting peer in {} queue", queueType);
+            log.debug("No waiting peer in {} queue", queueType);
             return null;
         }
 
@@ -238,7 +233,7 @@ public class MatchService {
         // 3. session info update
         sessionService.updateSubscriber(publisherId, subscriberId);
         sessionService.updatePublisher(subscriberId, publisherId);
-        log.info("📤 Sent MATCH message) publisher: {}, subscriber: {}", publisherId, subscriberId);
+        log.info("Peers matched - publisher: {}, subscriber: {}", publisherId, subscriberId);
     }
 
     private boolean isPeerAvailable(String targetPeerId, String myPeerId) {

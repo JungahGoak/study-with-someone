@@ -26,18 +26,18 @@ public class SignalMessageRelayService {
         String toId = message.getTargetId();
 
         if (toId == null) {
-            log.warn("relay failed: targetId is null. fromId={}", fromId);
+            log.warn("Relay failed: targetId is null - fromId: {}", fromId);
             return;
         }
 
         WebSocketSession targetSession = sessionService.getSession(toId);
         if (!isSessionValid(targetSession)) {
-            log.warn("relay failed: target session invalid. targetId={}", toId);
+            log.warn("Relay failed: target session invalid - targetId: {}", toId);
             return;
         }
 
         sendMessage(targetSession, message);
-        log.info("🔁 Relayed {} from {} → {}", message.getType(), fromId, toId);
+        log.info("Message relayed - type: {}, from: {} to: {}", message.getType(), fromId, toId);
     }
 
     /**
@@ -48,7 +48,7 @@ public class SignalMessageRelayService {
             String json = objectMapper.writeValueAsString(message);
             session.sendMessage(new TextMessage(json));
         } catch (IOException e) {
-            log.error("Failed to send message type {}: {}", message.getType(), e.getMessage());
+            log.error("Failed to send message - type: {}, error: {}", message.getType(), e.getMessage());
         }
     }
 
