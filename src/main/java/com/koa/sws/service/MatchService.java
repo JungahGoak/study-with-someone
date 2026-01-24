@@ -1,6 +1,5 @@
 package com.koa.sws.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.koa.sws.model.MessageType;
 import com.koa.sws.model.PeerSession;
 import com.koa.sws.model.QueueType;
@@ -8,10 +7,7 @@ import com.koa.sws.model.SignalMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
-
-import java.io.IOException;
 
 @Slf4j
 @Service
@@ -20,7 +16,7 @@ public class MatchService {
 
     private final SessionService sessionService;
     private final RedisQueueService queueService;
-    private final ObjectMapper objectMapper;
+    private final SignalMessageRelayService relayService;
 
     /**
      * 사용자 등록
@@ -82,27 +78,19 @@ public class MatchService {
     }
 
     /**
-     * 메세지 중계 (OFFER, ANSWER, ICE)
+     * 메시지 중계 (OFFER, ANSWER, ICE)
+     * Delegates to SignalMessageRelayService
      */
     public void relaySignalMessage(SignalMessage message) {
+        relayService.relaySignalMessage(message);
+    }
 
-        String fromId = message.getMyId();     // 메시지 보낸 사람
-        String toId = message.getTargetId();   // 전달해야 할 상대방
-
-        if (toId == null) {
-            log.warn("relay failed: targetId is null. fromId={}", fromId);
-            return;
-        }
-
-        WebSocketSession targetSession = sessionService.getSession(toId);
-        if (!isSessionValid(targetSession)) {
-            log.warn("relay failed: target session invalid. targetId={}", toId);
-            return;
-        }
-
-        // 그대로 상대에게 메시지 전달
-        sendMessage(targetSession, message);
-        log.info("🔁 Relayed {} from {} → {}", message.getType(), fromId, toId);
+    /**
+     * WebSocket 메시지 전송
+     * Delegates to SignalMessageRelayService
+     */
+    public void sendMessage(WebSocketSession session, SignalMessage message) {
+        relayService.sendMessage(session, message);
     }
 
     //
@@ -251,15 +239,6 @@ public class MatchService {
         sessionService.updateSubscriber(publisherId, subscriberId);
         sessionService.updatePublisher(subscriberId, publisherId);
         log.info("📤 Sent MATCH message) publisher: {}, subscriber: {}", publisherId, subscriberId);
-    }
-
-    public void sendMessage(WebSocketSession session, SignalMessage message) {
-        try {
-            String json = objectMapper.writeValueAsString(message);
-            session.sendMessage(new TextMessage(json));
-        } catch (IOException e) {
-            log.error("Failed to send message type {}: {}", message.getType(), e.getMessage());
-        }
     }
 
     private boolean isPeerAvailable(String targetPeerId, String myPeerId) {
