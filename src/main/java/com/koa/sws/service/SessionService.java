@@ -60,4 +60,8 @@ public class SessionService {
     public Collection<WebSocketSession> getAllSessions() {
         return websocketSessions.values();
     }
+
+    public boolean isSessionValid(WebSocketSession session) {
+        return session != null && session.isOpen();
+    }
 }
