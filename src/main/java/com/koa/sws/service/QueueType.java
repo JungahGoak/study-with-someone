@@ -1,10 +1,8 @@
-package com.koa.sws.model;
+package com.koa.sws.service;
 
-import com.koa.sws.service.RedisQueueService;
+import com.koa.sws.model.PeerSession;
 
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public enum QueueType {
     PUBLISHER(

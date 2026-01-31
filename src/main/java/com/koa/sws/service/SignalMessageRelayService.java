@@ -31,7 +31,7 @@ public class SignalMessageRelayService {
         }
 
         WebSocketSession targetSession = sessionService.getSession(toId);
-        if (!isSessionValid(targetSession)) {
+        if (!sessionService.isSessionValid(targetSession)) {
             log.warn("Relay failed: target session invalid - targetId: {}", toId);
             return;
         }
@@ -52,7 +52,4 @@ public class SignalMessageRelayService {
         }
     }
 
-    private boolean isSessionValid(WebSocketSession session) {
-        return session != null && session.isOpen();
-    }
 }

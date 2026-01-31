@@ -2,7 +2,6 @@ package com.koa.sws.service;
 
 import com.koa.sws.model.MessageType;
 import com.koa.sws.model.PeerSession;
-import com.koa.sws.model.QueueType;
 import com.koa.sws.model.SignalMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -97,7 +96,7 @@ public class MatchService {
 
         WebSocketSession publisherSession = sessionService.getSession(publisherId);
         PeerSession publisherPeerSession = sessionService.getPeerSession(publisherId);
-        if (!isSessionValid(publisherSession) || publisherPeerSession == null) {
+        if (!sessionService.isSessionValid(publisherSession) || publisherPeerSession == null) {
             log.warn("Publisher session not found: {}", publisherId);
             return;
         }
@@ -122,7 +121,7 @@ public class MatchService {
         WebSocketSession subscriberSession = sessionService.getSession(subscriberId);
         PeerSession subscriberPeerSession = sessionService.getPeerSession(subscriberId);
 
-        if (!isSessionValid(subscriberSession) || subscriberPeerSession == null) {
+        if (!sessionService.isSessionValid(subscriberSession) || subscriberPeerSession == null) {
             log.warn("Subscriber session not found: {}", subscriberId);
             return;
         }
@@ -167,7 +166,7 @@ public class MatchService {
         long maxRetries = queueType.getSize(queueService);
         long attempts = 0;
 
-        while (queueType.getSize(queueService) > 0 && !isSessionValid(candidateSession) && attempts < maxRetries) {
+        while (queueType.getSize(queueService) > 0 && !sessionService.isSessionValid(candidateSession) && attempts < maxRetries) {
             candidateId = queueType.pop(queueService);
             candidateSession = sessionService.getSession(candidateId);
             attempts++;
@@ -193,7 +192,7 @@ public class MatchService {
             }
 
             // If session is invalid, continue to next candidate
-            if (!isSessionValid(candidateSession)) {
+            if (!sessionService.isSessionValid(candidateSession)) {
                 log.debug("Invalid session found in queue - peerId: {}", candidateId);
                 candidateId = null;
                 candidateSession = null;
@@ -221,7 +220,7 @@ public class MatchService {
         // 1. find Session
         WebSocketSession publisherSession = sessionService.getSession(publisherId);
         WebSocketSession subscriberSession = sessionService.getSession(subscriberId);
-        if (!isSessionValid(subscriberSession) || !isSessionValid(publisherSession)) {
+        if (!sessionService.isSessionValid(subscriberSession) || !sessionService.isSessionValid(publisherSession)) {
             log.info("Session not active: {} <-> {}", subscriberId, publisherId);
             return;
         }
@@ -240,7 +239,4 @@ public class MatchService {
         return targetPeerId != null && myPeerId != null && !targetPeerId.equals(myPeerId);
     }
 
-    private boolean isSessionValid(WebSocketSession session) {
-        return session != null && session.isOpen();
-    }
 }
