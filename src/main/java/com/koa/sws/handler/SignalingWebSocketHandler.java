@@ -8,6 +8,7 @@ import com.koa.sws.model.MessageType;
 import com.koa.sws.model.SignalMessage;
 import com.koa.sws.service.MatchService;
 import com.koa.sws.service.SessionService;
+import com.koa.sws.service.SignalMessageRelayService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,7 @@ public class SignalingWebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
     private final SessionService sessionService;
     private final MatchService matchService;
+    private final SignalMessageRelayService relayService;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -84,7 +86,7 @@ public class SignalingWebSocketHandler extends TextWebSocketHandler {
             case OFFER:
             case ANSWER:
             case ICE:
-                matchService.relaySignalMessage(signalMessage);
+                relayService.relaySignalMessage(signalMessage);
                 break;
             case JOIN:
                 log.debug("JOIN message received - sessionId: {}", session.getId());
@@ -97,7 +99,7 @@ public class SignalingWebSocketHandler extends TextWebSocketHandler {
 
     private void sendErrorResponse(WebSocketSession session, String errorMessage) {
         if (session != null && session.isOpen()) {
-            matchService.sendMessage(session, new SignalMessage(MessageType.ERROR, session.getId(), null, errorMessage));
+            relayService.sendMessage(session, new SignalMessage(MessageType.ERROR, session.getId(), null, errorMessage));
         }
     }
 

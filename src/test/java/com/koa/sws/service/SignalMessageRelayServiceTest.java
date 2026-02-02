@@ -43,7 +43,7 @@ class SignalMessageRelayServiceTest {
     void relaySignalMessage_Success() throws Exception {
         // given
         when(sessionService.getSession("receiver-1")).thenReturn(session);
-        when(session.isOpen()).thenReturn(true);
+        when(sessionService.isSessionValid(session)).thenReturn(true);
         when(objectMapper.writeValueAsString(testMessage)).thenReturn("{\"type\":\"OFFER\"}");
 
         // when
@@ -87,7 +87,7 @@ class SignalMessageRelayServiceTest {
     void relaySignalMessage_FailWhenTargetSessionIsClosed() throws Exception {
         // given
         when(sessionService.getSession("receiver-1")).thenReturn(session);
-        when(session.isOpen()).thenReturn(false);
+        when(sessionService.isSessionValid(session)).thenReturn(false);
 
         // when
         relayService.relaySignalMessage(testMessage);

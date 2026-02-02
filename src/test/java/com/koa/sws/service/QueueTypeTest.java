@@ -1,6 +1,6 @@
-package com.koa.sws.model;
+package com.koa.sws.service;
 
-import com.koa.sws.service.RedisQueueService;
+import com.koa.sws.model.PeerSession;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
