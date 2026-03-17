@@ -5,12 +5,12 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class PeerSession {
+public class PeerRelation {
     private final String peerId;
     private String subscriber;
     private String publisher;
 
-    public PeerSession(String peerId) {
+    public PeerRelation(String peerId) {
         this.peerId = peerId;
     }
 }

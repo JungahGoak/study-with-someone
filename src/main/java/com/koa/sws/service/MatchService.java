@@ -1,7 +1,7 @@
 package com.koa.sws.service;
 
 import com.koa.sws.model.MessageType;
-import com.koa.sws.model.PeerSession;
+import com.koa.sws.model.PeerRelation;
 import com.koa.sws.model.SignalMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,15 +56,15 @@ public class MatchService {
      */
     public void unregisterPeer(String peerId) {
         // 1. Remove peer session, websocket session
-        PeerSession peerSession = sessionService.remove(peerId);
-        if (peerSession == null) {
+        PeerRelation peerRelation = sessionService.remove(peerId);
+        if (peerRelation == null) {
             log.warn("not found user: {}", peerId);
             return;
         }
 
         // 2. Notice to publisher, subscriber and Rematch
-        unregisterMyPublisher(peerSession.getPublisher(), peerId);
-        unregisterMySubscriber(peerSession.getSubscriber(), peerId);
+        unregisterMyPublisher(peerRelation.getPublisher(), peerId);
+        unregisterMySubscriber(peerRelation.getSubscriber(), peerId);
     }
     
     private void unregisterMyPublisher(String publisherId, String myId) {
@@ -74,8 +74,8 @@ public class MatchService {
         }
 
         WebSocketSession publisherSession = sessionService.getSession(publisherId);
-        PeerSession publisherPeerSession = sessionService.getPeerSession(publisherId);
-        if (!sessionService.isSessionValid(publisherSession) || publisherPeerSession == null) {
+        PeerRelation publisherPeerRelation = sessionService.getPeerRelation(publisherId);
+        if (!sessionService.isSessionValid(publisherSession) || publisherPeerRelation == null) {
             log.warn("Publisher session not found: {}", publisherId);
             return;
         }
@@ -98,9 +98,9 @@ public class MatchService {
         }
 
         WebSocketSession subscriberSession = sessionService.getSession(subscriberId);
-        PeerSession subscriberPeerSession = sessionService.getPeerSession(subscriberId);
+        PeerRelation subscriberPeerRelation = sessionService.getPeerRelation(subscriberId);
 
-        if (!sessionService.isSessionValid(subscriberSession) || subscriberPeerSession == null) {
+        if (!sessionService.isSessionValid(subscriberSession) || subscriberPeerRelation == null) {
             log.warn("Subscriber session not found: {}", subscriberId);
             return;
         }

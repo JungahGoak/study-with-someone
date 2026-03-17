@@ -1,6 +1,6 @@
 package com.koa.sws.service;
 
-import com.koa.sws.model.PeerSession;
+import com.koa.sws.model.PeerRelation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketSession;
@@ -13,37 +13,36 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SessionService {
 
     private final Map<String, WebSocketSession> websocketSessions = new ConcurrentHashMap<>();
-    private final Map<String, PeerSession> peerSessions = new ConcurrentHashMap<>();
+    private final Map<String, PeerRelation> peerRelations = new ConcurrentHashMap<>();
 
     public String register(WebSocketSession session) {
         websocketSessions.put(session.getId(), session);
-        peerSessions.put(session.getId(), new PeerSession(session.getId()));
+        peerRelations.put(session.getId(), new PeerRelation(session.getId()));
         return session.getId();
     }
 
-    public PeerSession remove(String sessionId) {
-        PeerSession peer = peerSessions.remove(sessionId);
+    public PeerRelation remove(String sessionId) {
+        PeerRelation relation = peerRelations.remove(sessionId);
         websocketSessions.remove(sessionId);
-
-        return peer;
+        return relation;
     }
 
     public void updatePublisher(String peerId, String publisherId) {
-        PeerSession peerSession = peerSessions.get(peerId);
-        if (peerSession == null) {
-            log.warn("PeerSession not found for peerId: {}", peerId);
+        PeerRelation relation = peerRelations.get(peerId);
+        if (relation == null) {
+            log.warn("PeerRelation not found for peerId: {}", peerId);
             return;
         }
-        peerSession.setPublisher(publisherId);
+        relation.setPublisher(publisherId);
     }
 
     public void updateSubscriber(String peerId, String subscriberId) {
-        PeerSession peerSession = peerSessions.get(peerId);
-        if (peerSession == null) {
-            log.warn("PeerSession not found for peerId: {}", peerId);
+        PeerRelation relation = peerRelations.get(peerId);
+        if (relation == null) {
+            log.warn("PeerRelation not found for peerId: {}", peerId);
             return;
         }
-        peerSession.setSubscriber(subscriberId);
+        relation.setSubscriber(subscriberId);
     }
 
     public WebSocketSession getSession(String peerId) {
@@ -51,9 +50,9 @@ public class SessionService {
         return websocketSessions.get(peerId);
     }
 
-    public PeerSession getPeerSession(String peerId) {
+    public PeerRelation getPeerRelation(String peerId) {
         if (peerId == null) return null;
-        return peerSessions.get(peerId);
+        return peerRelations.get(peerId);
     }
 
     public boolean isSessionValid(WebSocketSession session) {

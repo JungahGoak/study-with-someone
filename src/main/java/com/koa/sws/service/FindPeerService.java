@@ -1,6 +1,6 @@
 package com.koa.sws.service;
 
-import com.koa.sws.model.PeerSession;
+import com.koa.sws.model.PeerRelation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,9 +37,9 @@ public class FindPeerService {
      * @return 매칭 가능한 피어의 세션, 없으면 null
      */
     private WebSocketSession findWaitingPeer(WebSocketSession session, QueueType queueType) {
-        PeerSession myPeerSession = sessionService.getPeerSession(session.getId());
+        PeerRelation myPeerRelation = sessionService.getPeerRelation(session.getId());
         String myId = session.getId();
-        String myConnectedPeer = myPeerSession != null ? queueType.getConnectedPeer(myPeerSession) : null;
+        String myConnectedPeer = myPeerRelation != null ? queueType.getConnectedPeer(myPeerRelation) : null;
 
         String candidateId = null;
         WebSocketSession candidateSession = null;

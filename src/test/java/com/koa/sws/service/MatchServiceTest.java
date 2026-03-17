@@ -1,7 +1,7 @@
 package com.koa.sws.service;
 
 import com.koa.sws.model.MessageType;
-import com.koa.sws.model.PeerSession;
+import com.koa.sws.model.PeerRelation;
 import com.koa.sws.model.SignalMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,13 +39,13 @@ class MatchServiceTest {
     @InjectMocks
     private MatchService matchService;
 
-    private PeerSession publisherPeerSession;
-    private PeerSession subscriberPeerSession;
+    private PeerRelation publisherPeerRelation;
+    private PeerRelation subscriberPeerRelation;
 
     @BeforeEach
     void setUp() {
-        publisherPeerSession = new PeerSession("publisher-1");
-        subscriberPeerSession = new PeerSession("subscriber-1");
+        publisherPeerRelation = new PeerRelation("publisher-1");
+        subscriberPeerRelation = new PeerRelation("subscriber-1");
 
         lenient().when(publisherSession.getId()).thenReturn("publisher-1");
         lenient().when(subscriberSession.getId()).thenReturn("subscriber-1");
@@ -123,10 +123,10 @@ class MatchServiceTest {
     @DisplayName("피어 해제 - publisher에게 LEAVE 메시지 전송 및 재매칭")
     void unregisterPeer_ShouldNotifyPublisherAndRematch() {
         // given
-        subscriberPeerSession.setPublisher("publisher-1");
-        when(sessionService.remove("subscriber-1")).thenReturn(subscriberPeerSession);
+        subscriberPeerRelation.setPublisher("publisher-1");
+        when(sessionService.remove("subscriber-1")).thenReturn(subscriberPeerRelation);
         when(sessionService.getSession("publisher-1")).thenReturn(publisherSession);
-        when(sessionService.getPeerSession("publisher-1")).thenReturn(publisherPeerSession);
+        when(sessionService.getPeerRelation("publisher-1")).thenReturn(publisherPeerRelation);
         when(sessionService.isSessionValid(publisherSession)).thenReturn(true);
         when(findPeerService.findWaitingSubscriber(publisherSession)).thenReturn(null);
 
@@ -147,10 +147,10 @@ class MatchServiceTest {
     @DisplayName("피어 해제 - subscriber에게 LEAVE 메시지 전송 및 재매칭")
     void unregisterPeer_ShouldNotifySubscriberAndRematch() {
         // given
-        publisherPeerSession.setSubscriber("subscriber-1");
-        when(sessionService.remove("publisher-1")).thenReturn(publisherPeerSession);
+        publisherPeerRelation.setSubscriber("subscriber-1");
+        when(sessionService.remove("publisher-1")).thenReturn(publisherPeerRelation);
         when(sessionService.getSession("subscriber-1")).thenReturn(subscriberSession);
-        when(sessionService.getPeerSession("subscriber-1")).thenReturn(subscriberPeerSession);
+        when(sessionService.getPeerRelation("subscriber-1")).thenReturn(subscriberPeerRelation);
         when(sessionService.isSessionValid(subscriberSession)).thenReturn(true);
         when(findPeerService.findWaitingPublisher(subscriberSession)).thenReturn(null);
 
@@ -171,13 +171,13 @@ class MatchServiceTest {
     @DisplayName("피어 해제 - 대기 중인 새로운 피어가 있으면 즉시 재매칭")
     void unregisterPeer_ShouldRematchWithWaitingPeer() {
         // given
-        subscriberPeerSession.setPublisher("publisher-1");
+        subscriberPeerRelation.setPublisher("publisher-1");
         WebSocketSession newSubscriberSession = mock(WebSocketSession.class);
         lenient().when(newSubscriberSession.getId()).thenReturn("new-subscriber");
 
-        when(sessionService.remove("subscriber-1")).thenReturn(subscriberPeerSession);
+        when(sessionService.remove("subscriber-1")).thenReturn(subscriberPeerRelation);
         when(sessionService.getSession("publisher-1")).thenReturn(publisherSession);
-        when(sessionService.getPeerSession("publisher-1")).thenReturn(publisherPeerSession);
+        when(sessionService.getPeerRelation("publisher-1")).thenReturn(publisherPeerRelation);
         when(sessionService.isSessionValid(publisherSession)).thenReturn(true);
         when(sessionService.isSessionValid(newSubscriberSession)).thenReturn(true);
         when(sessionService.getSession("new-subscriber")).thenReturn(newSubscriberSession);
