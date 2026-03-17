@@ -1,6 +1,6 @@
 package com.koa.sws.service;
 
-import com.koa.sws.model.PeerSession;
+import com.koa.sws.model.PeerRelation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,11 +17,11 @@ class QueueTypeTest {
     @Mock
     private RedisQueueService queueService;
 
-    private PeerSession peerSession;
+    private PeerRelation peerRelation;
 
     @BeforeEach
     void setUp() {
-        peerSession = new PeerSession("peer-1");
+        peerRelation = new PeerRelation("peer-1");
     }
 
     @Test
@@ -66,10 +66,10 @@ class QueueTypeTest {
     @DisplayName("PUBLISHER 타입 - getConnectedPeer는 subscriber를 반환")
     void publisher_ShouldReturnSubscriberAsConnectedPeer() {
         // given
-        peerSession.setSubscriber("subscriber-1");
+        peerRelation.setSubscriber("subscriber-1");
 
         // when
-        String connectedPeer = QueueType.PUBLISHER.getConnectedPeer(peerSession);
+        String connectedPeer = QueueType.PUBLISHER.getConnectedPeer(peerRelation);
 
         // then
         assertThat(connectedPeer).isEqualTo("subscriber-1");
@@ -117,10 +117,10 @@ class QueueTypeTest {
     @DisplayName("SUBSCRIBER 타입 - getConnectedPeer는 publisher를 반환")
     void subscriber_ShouldReturnPublisherAsConnectedPeer() {
         // given
-        peerSession.setPublisher("publisher-1");
+        peerRelation.setPublisher("publisher-1");
 
         // when
-        String connectedPeer = QueueType.SUBSCRIBER.getConnectedPeer(peerSession);
+        String connectedPeer = QueueType.SUBSCRIBER.getConnectedPeer(peerRelation);
 
         // then
         assertThat(connectedPeer).isEqualTo("publisher-1");
