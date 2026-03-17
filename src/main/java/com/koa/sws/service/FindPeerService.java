@@ -6,6 +6,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 대기열에서 매칭 가능한 피어를 탐색하는 서비스
  */
@@ -36,10 +39,11 @@ public class FindPeerService {
     private WebSocketSession findWaitingPeer(WebSocketSession session, QueueType queueType) {
         PeerSession myPeerSession = sessionService.getPeerSession(session.getId());
         String myId = session.getId();
+        String myConnectedPeer = myPeerSession != null ? queueType.getConnectedPeer(myPeerSession) : null;
 
         String candidateId = null;
         WebSocketSession candidateSession = null;
-        String peerToRestore = null;
+        List<String> peersToRestore = new ArrayList<>();
         boolean needRestoreMine = false;
 
         long maxRetries = queueType.getSize(queueService);
@@ -51,11 +55,10 @@ public class FindPeerService {
             attempts++;
 
             // Validation 1: Cannot be connected to my existing peer (prevent circular dependency)
-            String myConnectedPeer = queueType.getConnectedPeer(myPeerSession);
             if (myConnectedPeer != null && !isPeerAvailable(candidateId, myConnectedPeer)) {
                 log.warn("Peer not available due to circular dependency - candidate: {}, myConnectedPeer: {}",
                         candidateId, myConnectedPeer);
-                peerToRestore = candidateId;
+                peersToRestore.add(candidateId);
                 candidateId = null;
                 candidateSession = null;
                 continue;
@@ -79,8 +82,8 @@ public class FindPeerService {
         }
 
         // Restore peers back to queue if needed
-        if (peerToRestore != null) {
-            queueType.add(queueService, peerToRestore);
+        for (String peer : peersToRestore) {
+            queueType.add(queueService, peer);
         }
         if (needRestoreMine) {
             queueType.add(queueService, myId);

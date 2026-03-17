@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -55,10 +54,6 @@ public class SessionService {
     public PeerSession getPeerSession(String peerId) {
         if (peerId == null) return null;
         return peerSessions.get(peerId);
-    }
-
-    public Collection<WebSocketSession> getAllSessions() {
-        return websocketSessions.values();
     }
 
     public boolean isSessionValid(WebSocketSession session) {
