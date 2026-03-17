@@ -63,8 +63,8 @@ public class MatchService {
         }
 
         // 2. Notice to publisher, subscriber and Rematch
-        unregisterMyPublisher(peerSession.getPublishTo(), peerId);
-        unregisterMySubscriber(peerSession.getSubscribeFrom(), peerId);
+        unregisterMyPublisher(peerSession.getPublisher(), peerId);
+        unregisterMySubscriber(peerSession.getSubscriber(), peerId);
     }
     
     private void unregisterMyPublisher(String publisherId, String myId) {
@@ -105,7 +105,7 @@ public class MatchService {
             return;
         }
 
-        relayService.sendMessage(subscriberSession, new SignalMessage(MessageType.LEAVE, subscriberId, myId, "Subscriber has left session"));
+        relayService.sendMessage(subscriberSession, new SignalMessage(MessageType.LEAVE, subscriberId, myId, "Publisher has left session"));
         sessionService.updatePublisher(subscriberId, null);
 
         String publisherId = queueMatchingService.findWaitingPublisher(subscriberSession);
@@ -113,7 +113,7 @@ public class MatchService {
             match(publisherId, subscriberId);
         } else {
             queueService.addToSubscribeQueue(subscriberId);
-            log.info("-> after disconnected add subscriber queue: {}", myId);
+            log.info("-> after disconnected add subscriber queue: {}", subscriberId);
         }
     }
 

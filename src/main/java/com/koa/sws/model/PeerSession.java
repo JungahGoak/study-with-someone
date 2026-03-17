@@ -1,30 +1,16 @@
 package com.koa.sws.model;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 public class PeerSession {
-    private String peerId;
-    private String subscribeFrom;
-    private String publishTo;
+    private final String peerId;
+    private String subscriber;
+    private String publisher;
 
     public PeerSession(String peerId) {
         this.peerId = peerId;
-    }
-
-    public void setSubscriber(String subscriberId) {
-        this.subscribeFrom = subscriberId;
-    }
-
-    public void setPublisher(String publisherId) {
-        this.publishTo = publisherId;
-    }
-
-    public String getSubscriber() {
-        return this.subscribeFrom;
-    }
-
-    public String getPublisher() {
-        return this.publishTo;
     }
 }
