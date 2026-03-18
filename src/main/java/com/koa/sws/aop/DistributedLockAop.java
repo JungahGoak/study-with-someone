@@ -1,5 +1,6 @@
 package com.koa.sws.aop;
 
+import com.koa.sws.constant.DistributedLockConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -18,8 +19,6 @@ import java.lang.reflect.Method;
 @RequiredArgsConstructor
 public class DistributedLockAop {
 
-    private static final String REDISSON_LOCK_PREFIX = "LOCK:";
-
     private final RedissonClient redissonClient;
     private final AopForTransaction aopForTranscation;
 
@@ -29,8 +28,8 @@ public class DistributedLockAop {
         Method method = signature.getMethod();
         DistributedLock distributedLock = method.getAnnotation(DistributedLock.class);
 
-        String key = REDISSON_LOCK_PREFIX + CustomSpringELParser.getDynamicValue(signature.getParameterNames(), joinPoint.getArgs(), distributedLock.key());
-        RLock rLock = redissonClient.getLock(key);  // (1)
+        String key = DistributedLockConstants.LOCK_PREFIX + CustomSpringELParser.getDynamicValue(signature.getParameterNames(), joinPoint.getArgs(), distributedLock.key());
+        RLock rLock = redissonClient.getLock(key);
 
         try {
             boolean available = rLock.tryLock(
@@ -39,17 +38,25 @@ public class DistributedLockAop {
                     distributedLock.timeUnit());
 
             if (!available) {
+                log.warn("Failed to acquire lock within wait time - key: {}, waitTime: {} {}",
+                        key, distributedLock.waitTime(), distributedLock.timeUnit());
                 return false;
             }
 
+            log.debug("Lock acquired - key: {}", key);
+
             return aopForTranscation.proceed(joinPoint);
         } catch (InterruptedException e) {
-            throw new InterruptedException();
+            Thread.currentThread().interrupt();
+            log.error("Thread interrupted while waiting for lock - key: {}", key, e);
+            throw e;
         } finally {
             try {
-                rLock.unlock();
+                if (rLock.isHeldByCurrentThread()) {
+                    rLock.unlock();
+                }
             } catch (IllegalMonitorStateException e) {
-                log.info("Redisson Lock Already UnLock");
+                log.warn("Lock was already released or not held by current thread - key: {}", key, e);
             }
         }
     }
