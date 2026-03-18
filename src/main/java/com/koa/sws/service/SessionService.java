@@ -58,4 +58,8 @@ public class SessionService {
     public boolean isSessionValid(WebSocketSession session) {
         return session != null && session.isOpen();
     }
+
+    public int getSessionCount() {
+        return websocketSessions.size();
+    }
 }
