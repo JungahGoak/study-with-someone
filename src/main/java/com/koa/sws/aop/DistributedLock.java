@@ -1,5 +1,6 @@
 package com.koa.sws.aop;
 
+import com.koa.sws.constant.DistributedLockConstants;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
