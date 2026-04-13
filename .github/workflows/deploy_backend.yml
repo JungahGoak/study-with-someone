@@ -85,6 +85,11 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            if ! command -v docker-compose &>/dev/null; then
+              sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+            fi
+
             echo "${{ secrets.ENV_FILE }}" > ~/sws/.env
 
             cd ~/sws
@@ -94,5 +99,5 @@ jobs:
             mv prometheus/prometheus.resolved.yml prometheus/prometheus.yml
 
             export SWS_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}"
-            docker compose pull spring
-            docker compose up -d
+            docker-compose pull spring
+            docker-compose up -d
