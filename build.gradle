@@ -33,7 +33,13 @@ dependencies {
     // redisson
     implementation 'org.redisson:redisson-spring-boot-starter:3.52.0'
 
-	compileOnly 'org.projectlombok:lombok'
+    // Actuator
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // Prometheus
+    implementation'io.micrometer:micrometer-registry-prometheus'
+
+    compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
