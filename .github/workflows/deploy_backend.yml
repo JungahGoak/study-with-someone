@@ -75,7 +75,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "docker-compose.yml,prometheus/"
+          source: "docker compose.yml,prometheus/"
           target: "~/sws"
 
       - name: Deploy to server via SSH
@@ -94,5 +94,5 @@ jobs:
             mv prometheus/prometheus.resolved.yml prometheus/prometheus.yml
 
             export SWS_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}"
-            docker-compose pull spring
-            docker-compose up -d
+            docker compose pull spring
+            docker compose up -d
