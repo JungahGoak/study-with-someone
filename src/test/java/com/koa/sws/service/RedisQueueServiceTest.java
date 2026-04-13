@@ -31,7 +31,7 @@ class RedisQueueServiceTest {
         // 큐 초기화
         redissonClient.getKeys().delete("sws:publishQueue");
 
-        int TOTAL = 50;
+        int TOTAL = 1000;
         for (int i = 1; i <= TOTAL; i++) {
             queueService.addToPublishQueue("USER-" + i);
         }

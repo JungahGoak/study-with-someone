@@ -14,3 +14,14 @@ websocket:
 
 front:
   url: ${FRONT_URL}
+
+management:
+  server:
+    port: ${MANAGEMENT_PORT:8081}
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, metrics
+  metrics:
+    tags:
+      application: sws
