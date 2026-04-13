@@ -11,3 +11,12 @@ spring:
 
 front:
   url: ${FRONT_URL}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, metrics
+  metrics:
+    tags:
+      application: sws
