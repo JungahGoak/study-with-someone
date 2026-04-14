@@ -1,6 +1,7 @@
 package com.koa.sws.service;
 
 import com.koa.sws.model.PeerSession;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketSession;
@@ -11,32 +12,32 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class SessionService {
 
     private final Map<String, WebSocketSession> websocketSessions = new ConcurrentHashMap<>();
-    private final Map<String, PeerSession> peerSessions = new ConcurrentHashMap<>();
+    private final RedisPeerService redisPeerService;
 
     public String register(WebSocketSession session) {
-        websocketSessions.put(session.getId(), session);
-        peerSessions.put(session.getId(), new PeerSession(session.getId()));
-        return session.getId();
+        String peerId = session.getId();
+        websocketSessions.put(peerId, session);
+        redisPeerService.register(peerId);
+        return peerId;
     }
 
     public PeerSession remove(String sessionId) {
-        PeerSession peer = peerSessions.remove(sessionId);
         websocketSessions.remove(sessionId);
-
-        return peer;
+        PeerSession peerSession = redisPeerService.getPeerSession(sessionId);
+        redisPeerService.remove(sessionId);
+        return peerSession;
     }
 
     public void updatePublisher(String peerId, String publisherId) {
-        PeerSession peerSession = peerSessions.get(peerId);
-        peerSession.setPublisher(publisherId);
+        redisPeerService.updatePublisher(peerId, publisherId);
     }
 
     public void updateSubscriber(String peerId, String subscriberId) {
-        PeerSession peerSession = peerSessions.get(peerId);
-        peerSession.setSubscriber(subscriberId);
+        redisPeerService.updateSubscriber(peerId, subscriberId);
     }
 
     public WebSocketSession getSession(String peerId) {
@@ -46,7 +47,11 @@ public class SessionService {
 
     public PeerSession getPeerSession(String peerId) {
         if (peerId == null) return null;
-        return peerSessions.get(peerId);
+        return redisPeerService.getPeerSession(peerId);
+    }
+
+    public boolean isPeerPresent(String peerId) {
+        return redisPeerService.isPresent(peerId);
     }
 
     public Collection<WebSocketSession> getAllSessions() {
