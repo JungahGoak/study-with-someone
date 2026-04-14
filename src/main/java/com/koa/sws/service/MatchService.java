@@ -14,14 +14,13 @@ import org.springframework.web.socket.WebSocketSession;
 public class MatchService {
 
     private final SessionService sessionService;
+    private final RedisPeerService redisPeerService;
     private final RedisQueueService queueService;
     private final SignalMessageRelayService relayService;
     private final FindPeerService queueMatchingService;
 
     /**
      * 사용자 등록
-     * 1. as publisher
-     * 2. as subscriber
      */
     public void registerPeer(WebSocketSession session) {
         log.info("Registering peer as publisher and subscriber - peerId: {}", session.getId());
@@ -31,7 +30,6 @@ public class MatchService {
 
     public void registerAsPublisher(WebSocketSession session) {
         String myId = session.getId();
-
         String subscriberId = queueMatchingService.findWaitingSubscriber(session);
         if (subscriberId == null) {
             queueService.addToPublishQueue(myId);
@@ -42,7 +40,6 @@ public class MatchService {
 
     public void registerAsSubscriber(WebSocketSession session) {
         String myId = session.getId();
-
         String publisherId = queueMatchingService.findWaitingPublisher(session);
         if (publisherId == null) {
             queueService.addToSubscribeQueue(myId);
@@ -55,31 +52,28 @@ public class MatchService {
      * 사용자 해제
      */
     public void unregisterPeer(String peerId) {
-        // 1. Remove peer session, websocket session
         PeerRelation peerRelation = sessionService.remove(peerId);
         if (peerRelation == null) {
             log.warn("not found user: {}", peerId);
             return;
         }
 
-        // 2. Notice to publisher, subscriber and Rematch
         unregisterMyPublisher(peerRelation.getPublisher(), peerId);
         unregisterMySubscriber(peerRelation.getSubscriber(), peerId);
     }
-    
+
     private void unregisterMyPublisher(String publisherId, String myId) {
         if (publisherId == null) {
             log.debug("No connected publisher for {}", myId);
             return;
         }
 
-        WebSocketSession publisherSession = sessionService.getSession(publisherId);
-        PeerRelation publisherPeerRelation = sessionService.getPeerRelation(publisherId);
-        if (!sessionService.isSessionValid(publisherSession) || publisherPeerRelation == null) {
-            log.warn("Publisher session not found: {}", publisherId);
+        if (!redisPeerService.isPresent(publisherId)) {
+            log.warn("Publisher not found in Redis: {}", publisherId);
             return;
         }
 
+        WebSocketSession publisherSession = sessionService.getSession(publisherId);
         relayService.sendMessage(publisherSession, new SignalMessage(MessageType.LEAVE, publisherId, myId, "Subscriber has left session"));
         sessionService.updateSubscriber(publisherId, null);
 
@@ -97,14 +91,12 @@ public class MatchService {
             return;
         }
 
-        WebSocketSession subscriberSession = sessionService.getSession(subscriberId);
-        PeerRelation subscriberPeerRelation = sessionService.getPeerRelation(subscriberId);
-
-        if (!sessionService.isSessionValid(subscriberSession) || subscriberPeerRelation == null) {
-            log.warn("Subscriber session not found: {}", subscriberId);
+        if (!redisPeerService.isPresent(subscriberId)) {
+            log.warn("Subscriber not found in Redis: {}", subscriberId);
             return;
         }
 
+        WebSocketSession subscriberSession = sessionService.getSession(subscriberId);
         relayService.sendMessage(subscriberSession, new SignalMessage(MessageType.LEAVE, subscriberId, myId, "Publisher has left session"));
         sessionService.updatePublisher(subscriberId, null);
 
@@ -118,19 +110,17 @@ public class MatchService {
     }
 
     private void match(String publisherId, String subscriberId) {
-        // 1. find Session
-        WebSocketSession publisherSession = sessionService.getSession(publisherId);
-        WebSocketSession subscriberSession = sessionService.getSession(subscriberId);
-        if (!sessionService.isSessionValid(subscriberSession) || !sessionService.isSessionValid(publisherSession)) {
-            log.info("Session not active: {} <-> {}", subscriberId, publisherId);
+        if (!redisPeerService.isPresent(publisherId) || !redisPeerService.isPresent(subscriberId)) {
+            log.info("Peer not active in Redis: {} <-> {}", publisherId, subscriberId);
             return;
         }
 
-        // 2. send Websocket Message
+        WebSocketSession publisherSession = sessionService.getSession(publisherId);
+        WebSocketSession subscriberSession = sessionService.getSession(subscriberId);
+
         relayService.sendMessage(publisherSession, new SignalMessage(MessageType.PUBLISH, publisherId, subscriberId));
         relayService.sendMessage(subscriberSession, new SignalMessage(MessageType.SUBSCRIBE, subscriberId, publisherId));
 
-        // 3. session info update
         sessionService.updateSubscriber(publisherId, subscriberId);
         sessionService.updatePublisher(subscriberId, publisherId);
         log.info("Peers matched - publisher: {}, subscriber: {}", publisherId, subscriberId);
