@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,12 +15,17 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class SessionService {
 
+    private static final int SEND_TIME_LIMIT_MS = 1_000;
+    private static final int BUFFER_SIZE_LIMIT_BYTES = 16 * 1024;
+
     private final Map<String, WebSocketSession> websocketSessions = new ConcurrentHashMap<>();
     private final RedisPeerService redisPeerService;
 
     public String register(WebSocketSession session) {
         String peerId = session.getId();
-        websocketSessions.put(peerId, session);
+        ConcurrentWebSocketSessionDecorator concurrentSession =
+                new ConcurrentWebSocketSessionDecorator(session, SEND_TIME_LIMIT_MS, BUFFER_SIZE_LIMIT_BYTES);
+        websocketSessions.put(peerId, concurrentSession);
         redisPeerService.register(peerId);
         return peerId;
     }
