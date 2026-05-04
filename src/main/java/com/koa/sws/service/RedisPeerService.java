@@ -1,12 +1,11 @@
 package com.koa.sws.service;
 
+import com.koa.sws.constant.RedisKeyConstants;
 import com.koa.sws.model.PeerRelation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-
-import java.time.Duration;
 
 /**
  * peer의 존재 여부와 publisher/subscriber 관계를 Redis에서 관리
@@ -23,13 +22,12 @@ public class RedisPeerService {
 
     private final RedisTemplate<String, String> redisTemplate;
 
-    private static final String PEER_PREFIX = "sws:peer:";
-    private static final String PUBLISHER_SUFFIX = ":publisher";
-    private static final String SUBSCRIBER_SUFFIX = ":subscriber";
-    private static final Duration SESSION_TTL = Duration.ofHours(24);
+    private static final String PEER_PREFIX = RedisKeyConstants.PEER_PREFIX;
+    private static final String PUBLISHER_SUFFIX = RedisKeyConstants.PUBLISHER_SUFFIX;
+    private static final String SUBSCRIBER_SUFFIX = RedisKeyConstants.SUBSCRIBER_SUFFIX;
 
     public void register(String peerId) {
-        redisTemplate.opsForValue().set(PEER_PREFIX + peerId, "1", SESSION_TTL);
+        redisTemplate.opsForValue().set(PEER_PREFIX + peerId, "1", RedisKeyConstants.PEER_SESSION_TTL);
         log.debug("Registered peer in Redis: {}", peerId);
     }
 
@@ -45,7 +43,7 @@ public class RedisPeerService {
         if (publisherId == null) {
             redisTemplate.delete(key);
         } else {
-            redisTemplate.opsForValue().set(key, publisherId, SESSION_TTL);
+            redisTemplate.opsForValue().set(key, publisherId, RedisKeyConstants.PEER_SESSION_TTL);
         }
     }
 
@@ -54,7 +52,7 @@ public class RedisPeerService {
         if (subscriberId == null) {
             redisTemplate.delete(key);
         } else {
-            redisTemplate.opsForValue().set(key, subscriberId, SESSION_TTL);
+            redisTemplate.opsForValue().set(key, subscriberId, RedisKeyConstants.PEER_SESSION_TTL);
         }
     }
 
