@@ -2,9 +2,9 @@ name: CI + Docker Build & Push
 
 on:
   push:
-    branches: ["develop"]
+    branches: ["main"]
   pull_request:
-    branches: ["develop"]
+    branches: ["main"]
 
 jobs:
   build_and_push:
