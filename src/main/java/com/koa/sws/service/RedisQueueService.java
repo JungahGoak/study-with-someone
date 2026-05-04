@@ -1,10 +1,10 @@
 package com.koa.sws.service;
 
-import com.koa.sws.aop.DistributedLock;
 import com.koa.sws.constant.RedisKeyConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -24,16 +24,24 @@ public class RedisQueueService {
         enqueue(RedisKeyConstants.SUBSCRIBE_QUEUE, peerId);
     }
 
-    @DistributedLock(key = "'publishQueue'")
+    public void removeFromPublishQueue(String peerId) {
+        log.info("Removing from publisher queue - peerId: {}", peerId);
+        remove(RedisKeyConstants.PUBLISH_QUEUE, peerId);
+    }
+
+    public void removeFromSubscribeQueue(String peerId) {
+        log.info("Removing from subscriber queue - peerId: {}", peerId);
+        remove(RedisKeyConstants.SUBSCRIBE_QUEUE, peerId);
+    }
+
     public String popFromPublishQueue() {
-        String peerId = dequeue(RedisKeyConstants.PUBLISH_QUEUE);
+        String peerId = pop(RedisKeyConstants.PUBLISH_QUEUE);
         log.info("Popped from publisher queue - peerId: {}", peerId);
         return peerId;
     }
 
-    @DistributedLock(key = "'subscribeQueue'")
     public String popFromSubscribeQueue() {
-        String peerId = dequeue(RedisKeyConstants.SUBSCRIBE_QUEUE);
+        String peerId = pop(RedisKeyConstants.SUBSCRIBE_QUEUE);
         log.info("Popped from subscriber queue - peerId: {}", peerId);
         return peerId;
     }
@@ -46,15 +54,21 @@ public class RedisQueueService {
         return getQueueSize(RedisKeyConstants.SUBSCRIBE_QUEUE);
     }
 
-    private Long getQueueSize(String queue) {
-        return redisTemplate.opsForList().size(queue);
-    }
-
     private void enqueue(String queue, String peerId) {
-        redisTemplate.opsForList().rightPush(queue, peerId);
+        redisTemplate.opsForZSet().add(queue, peerId, System.currentTimeMillis());
     }
 
-    private String dequeue(String queue) {
-        return redisTemplate.opsForList().leftPop(queue);
+    private String pop(String queue) {
+        ZSetOperations.TypedTuple<String> tuple = redisTemplate.opsForZSet().popMin(queue);
+        return tuple != null ? tuple.getValue() : null;
+    }
+
+    private void remove(String queue, String peerId) {
+        redisTemplate.opsForZSet().remove(queue, peerId);
+    }
+
+    private Long getQueueSize(String queue) {
+        Long size = redisTemplate.opsForZSet().zCard(queue);
+        return size != null ? size : 0L;
     }
 }

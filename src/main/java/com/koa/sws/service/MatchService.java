@@ -52,6 +52,9 @@ public class MatchService {
      * 사용자 해제
      */
     public void unregisterPeer(String peerId) {
+        queueService.removeFromPublishQueue(peerId);
+        queueService.removeFromSubscribeQueue(peerId);
+
         PeerRelation peerRelation = sessionService.remove(peerId);
         if (peerRelation == null) {
             log.warn("not found user: {}", peerId);
