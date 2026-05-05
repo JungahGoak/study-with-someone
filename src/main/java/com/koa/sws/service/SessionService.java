@@ -33,7 +33,9 @@ public class SessionService {
     public PeerRelation remove(String sessionId) {
         websocketSessions.remove(sessionId);
         PeerRelation relation = redisPeerService.getPeerRelation(sessionId);
-        redisPeerService.remove(sessionId);
+        String publisherId = relation != null ? relation.getPublisher() : null;
+        String subscriberId = relation != null ? relation.getSubscriber() : null;
+        redisPeerService.remove(sessionId, publisherId, subscriberId);
         return relation;
     }
 
