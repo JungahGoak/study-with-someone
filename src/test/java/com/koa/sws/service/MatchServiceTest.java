@@ -22,6 +22,9 @@ class MatchServiceTest {
     private SessionService sessionService;
 
     @Mock
+    private RedisPeerService redisPeerService;
+
+    @Mock
     private RedisQueueService queueService;
 
     @Mock
@@ -86,10 +89,10 @@ class MatchServiceTest {
     void registerAsPublisher_ShouldMatchSuccessfully() {
         // given
         when(findPeerService.findWaitingSubscriber(publisherSession)).thenReturn("subscriber-1");
+        when(redisPeerService.isPresent("publisher-1")).thenReturn(true);
+        when(redisPeerService.isPresent("subscriber-1")).thenReturn(true);
         when(sessionService.getSession("subscriber-1")).thenReturn(subscriberSession);
         when(sessionService.getSession("publisher-1")).thenReturn(publisherSession);
-        when(sessionService.isSessionValid(publisherSession)).thenReturn(true);
-        when(sessionService.isSessionValid(subscriberSession)).thenReturn(true);
 
         // when
         matchService.registerAsPublisher(publisherSession);
@@ -105,10 +108,10 @@ class MatchServiceTest {
     void registerAsSubscriber_ShouldMatchSuccessfully() {
         // given
         when(findPeerService.findWaitingPublisher(subscriberSession)).thenReturn("publisher-1");
+        when(redisPeerService.isPresent("publisher-1")).thenReturn(true);
+        when(redisPeerService.isPresent("subscriber-1")).thenReturn(true);
         when(sessionService.getSession("publisher-1")).thenReturn(publisherSession);
         when(sessionService.getSession("subscriber-1")).thenReturn(subscriberSession);
-        when(sessionService.isSessionValid(publisherSession)).thenReturn(true);
-        when(sessionService.isSessionValid(subscriberSession)).thenReturn(true);
 
         // when
         matchService.registerAsSubscriber(subscriberSession);
@@ -125,9 +128,8 @@ class MatchServiceTest {
         // given
         subscriberPeerRelation.setPublisher("publisher-1");
         when(sessionService.remove("subscriber-1")).thenReturn(subscriberPeerRelation);
+        when(redisPeerService.isPresent("publisher-1")).thenReturn(true);
         when(sessionService.getSession("publisher-1")).thenReturn(publisherSession);
-        when(sessionService.getPeerRelation("publisher-1")).thenReturn(publisherPeerRelation);
-        when(sessionService.isSessionValid(publisherSession)).thenReturn(true);
         when(findPeerService.findWaitingSubscriber(publisherSession)).thenReturn(null);
 
         // when
@@ -149,9 +151,8 @@ class MatchServiceTest {
         // given
         publisherPeerRelation.setSubscriber("subscriber-1");
         when(sessionService.remove("publisher-1")).thenReturn(publisherPeerRelation);
+        when(redisPeerService.isPresent("subscriber-1")).thenReturn(true);
         when(sessionService.getSession("subscriber-1")).thenReturn(subscriberSession);
-        when(sessionService.getPeerRelation("subscriber-1")).thenReturn(subscriberPeerRelation);
-        when(sessionService.isSessionValid(subscriberSession)).thenReturn(true);
         when(findPeerService.findWaitingPublisher(subscriberSession)).thenReturn(null);
 
         // when
@@ -176,10 +177,9 @@ class MatchServiceTest {
         lenient().when(newSubscriberSession.getId()).thenReturn("new-subscriber");
 
         when(sessionService.remove("subscriber-1")).thenReturn(subscriberPeerRelation);
+        when(redisPeerService.isPresent("publisher-1")).thenReturn(true);
+        when(redisPeerService.isPresent("new-subscriber")).thenReturn(true);
         when(sessionService.getSession("publisher-1")).thenReturn(publisherSession);
-        when(sessionService.getPeerRelation("publisher-1")).thenReturn(publisherPeerRelation);
-        when(sessionService.isSessionValid(publisherSession)).thenReturn(true);
-        when(sessionService.isSessionValid(newSubscriberSession)).thenReturn(true);
         when(sessionService.getSession("new-subscriber")).thenReturn(newSubscriberSession);
         when(findPeerService.findWaitingSubscriber(publisherSession)).thenReturn("new-subscriber");
 

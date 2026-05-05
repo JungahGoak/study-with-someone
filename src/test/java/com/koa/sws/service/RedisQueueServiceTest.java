@@ -1,7 +1,6 @@
 package com.koa.sws.service;
 
 import org.junit.jupiter.api.Test;
-import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -23,16 +22,21 @@ class RedisQueueServiceTest {
     private RedisQueueService queueService;
 
     @Autowired
-    private RedissonClient redissonClient;
+    private RedisPeerService redisPeerService;
 
     @Test
     void distributedLock_shouldHandleHighConcurrencyPop() throws Exception {
 
-        // 큐 초기화
-        redissonClient.getKeys().delete("sws:publishQueue");
-
         int TOTAL = 1000;
+
+        // 이전 테스트 잔여 데이터 제거 (peer 키 + 큐 항목 동시 정리)
         for (int i = 1; i <= TOTAL; i++) {
+            redisPeerService.remove("USER-" + i, null, null);
+        }
+
+        // peer 등록 후 큐에 추가 (enqueue Lua script가 peer 키 존재를 확인)
+        for (int i = 1; i <= TOTAL; i++) {
+            redisPeerService.register("USER-" + i);
             queueService.addToPublishQueue("USER-" + i);
         }
 
