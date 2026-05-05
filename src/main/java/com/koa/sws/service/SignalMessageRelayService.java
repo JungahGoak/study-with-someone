@@ -47,6 +47,8 @@ public class SignalMessageRelayService {
         try {
             String json = objectMapper.writeValueAsString(message);
             session.sendMessage(new TextMessage(json));
+        } catch (IllegalStateException e) {
+            log.warn("Session closed before message sent - type: {}, sessionId: {}", message.getType(), session.getId());
         } catch (IOException e) {
             log.error("Failed to send message - type: {}, error: {}", message.getType(), e.getMessage());
         }
