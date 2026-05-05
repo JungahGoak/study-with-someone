@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -124,5 +125,17 @@ class SignalMessageRelayServiceTest {
         // then
         verify(objectMapper).writeValueAsString(testMessage);
         verify(session, never()).sendMessage(any());
+    }
+
+    @Test
+    @DisplayName("메시지 전송 실패 - 세션이 닫혀 IllegalStateException 발생 시 예외를 전파하지 않음")
+    void sendMessage_ShouldNotThrowWhenIllegalStateException() throws Exception {
+        // given
+        when(objectMapper.writeValueAsString(testMessage)).thenReturn("{\"type\":\"OFFER\"}");
+        doThrow(new IllegalStateException("TEXT_PARTIAL_WRITING")).when(session).sendMessage(any());
+
+        // when & then
+        assertDoesNotThrow(() -> relayService.sendMessage(session, testMessage));
+        verify(session).sendMessage(any(TextMessage.class));
     }
 }
