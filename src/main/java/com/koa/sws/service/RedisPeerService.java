@@ -4,8 +4,11 @@ import com.koa.sws.constant.RedisKeyConstants;
 import com.koa.sws.model.PeerRelation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * peer의 존재 여부와 publisher/subscriber 관계를 Redis에서 관리
@@ -26,15 +29,40 @@ public class RedisPeerService {
     private static final String PUBLISHER_SUFFIX = RedisKeyConstants.PUBLISHER_SUFFIX;
     private static final String SUBSCRIBER_SUFFIX = RedisKeyConstants.SUBSCRIBER_SUFFIX;
 
+    // peer 키 3개 삭제 + 두 큐에서 제거 + 파트너의 stale 참조 삭제를 원자적으로 실행
+    // KEYS[1]=peer, KEYS[2]=peer:publisher, KEYS[3]=peer:subscriber, KEYS[4]=publishQueue, KEYS[5]=subscribeQueue
+    // ARGV[1]=peerId, ARGV[2]=publisher의 :subscriber 키(없으면 ""), ARGV[3]=subscriber의 :publisher 키(없으면 "")
+    private static final RedisScript<Long> REMOVE_PEER_AND_DEQUEUE = RedisScript.of(
+            """
+            redis.call('DEL', KEYS[1], KEYS[2], KEYS[3])
+            redis.call('ZREM', KEYS[4], ARGV[1])
+            redis.call('ZREM', KEYS[5], ARGV[1])
+            if ARGV[2] ~= '' then redis.call('DEL', ARGV[2]) end
+            if ARGV[3] ~= '' then redis.call('DEL', ARGV[3]) end
+            return 1
+            """,
+            Long.class
+    );
+
     public void register(String peerId) {
         redisTemplate.opsForValue().set(PEER_PREFIX + peerId, "1", RedisKeyConstants.PEER_SESSION_TTL);
         log.debug("Registered peer in Redis: {}", peerId);
     }
 
-    public void remove(String peerId) {
-        redisTemplate.delete(PEER_PREFIX + peerId);
-        redisTemplate.delete(PEER_PREFIX + peerId + PUBLISHER_SUFFIX);
-        redisTemplate.delete(PEER_PREFIX + peerId + SUBSCRIBER_SUFFIX);
+    public void remove(String peerId, String publisherId, String subscriberId) {
+        redisTemplate.execute(
+                REMOVE_PEER_AND_DEQUEUE,
+                List.of(
+                        PEER_PREFIX + peerId,
+                        PEER_PREFIX + peerId + PUBLISHER_SUFFIX,
+                        PEER_PREFIX + peerId + SUBSCRIBER_SUFFIX,
+                        RedisKeyConstants.PUBLISH_QUEUE,
+                        RedisKeyConstants.SUBSCRIBE_QUEUE
+                ),
+                peerId,
+                publisherId != null ? PEER_PREFIX + publisherId + SUBSCRIBER_SUFFIX : "",
+                subscriberId != null ? PEER_PREFIX + subscriberId + PUBLISHER_SUFFIX : ""
+        );
         log.debug("Removed peer from Redis: {}", peerId);
     }
 
