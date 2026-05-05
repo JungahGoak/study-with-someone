@@ -77,6 +77,11 @@ public class MatchService {
         }
 
         WebSocketSession publisherSession = sessionService.getSession(publisherId);
+        if (publisherSession == null) {
+            log.warn("Publisher session already removed (concurrent disconnect): {}", publisherId);
+            // TODO: 매칭 취소 후 처리
+            return;
+        }
         relayService.sendMessage(publisherSession, new SignalMessage(MessageType.LEAVE, publisherId, myId, "Subscriber has left session"));
         sessionService.updateSubscriber(publisherId, null);
 
@@ -100,6 +105,11 @@ public class MatchService {
         }
 
         WebSocketSession subscriberSession = sessionService.getSession(subscriberId);
+        if (subscriberSession == null) {
+            log.warn("Subscriber session already removed (concurrent disconnect): {}", subscriberId);
+            // TODO: 매칭 취소 후 처리
+            return;
+        }
         relayService.sendMessage(subscriberSession, new SignalMessage(MessageType.LEAVE, subscriberId, myId, "Publisher has left session"));
         sessionService.updatePublisher(subscriberId, null);
 
@@ -120,6 +130,10 @@ public class MatchService {
 
         WebSocketSession publisherSession = sessionService.getSession(publisherId);
         WebSocketSession subscriberSession = sessionService.getSession(subscriberId);
+        if (publisherSession == null || subscriberSession == null) {
+            log.warn("Session already removed during match (concurrent disconnect): publisher={}, subscriber={}", publisherId, subscriberId);
+            return;
+        }
 
         relayService.sendMessage(publisherSession, new SignalMessage(MessageType.PUBLISH, publisherId, subscriberId));
         relayService.sendMessage(subscriberSession, new SignalMessage(MessageType.SUBSCRIBE, subscriberId, publisherId));
