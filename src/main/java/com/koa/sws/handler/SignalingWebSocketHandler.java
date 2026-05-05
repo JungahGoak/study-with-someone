@@ -105,8 +105,12 @@ public class SignalingWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        matchService.unregisterPeer(session.getId());
-        log.info("WebSocket connection closed - peerId: {}, status: {}, reason: {}",
-                session.getId(), status.getCode(), status.getReason());
+        try {
+            matchService.unregisterPeer(session.getId());
+        } finally {
+            log.info("WebSocket connection closed - peerId: {}, status: {}, reason: {}",
+                    session.getId(), status.getCode(), status.getReason());
+        }
+
     }
 }
