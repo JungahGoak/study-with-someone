@@ -42,6 +42,22 @@ services:
       - "traefik.http.routers.sws.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.sws.entrypoints=web"
       - "traefik.http.services.sws.loadbalancer.server.port=8080"
+      - "traefik.http.routers.sws.middlewares=rate-limit@docker,body-limit@docker,secure-headers@docker"
+
+      # Rate Limit: IP당 평균 20req/s, 순간 최대 30개 허용
+      # WebSocket handshake도 HTTP 요청이므로 여유 있게 설정
+      - "traefik.http.middlewares.rate-limit.ratelimit.average=20"
+      - "traefik.http.middlewares.rate-limit.ratelimit.burst=30"
+      - "traefik.http.middlewares.rate-limit.ratelimit.period=1s"
+
+      # 요청 크기 제한: 64KB (WebRTC signaling 메시지는 SDP/ICE로 수 KB 수준)
+      - "traefik.http.middlewares.body-limit.buffering.maxRequestBodyBytes=65536"
+
+      # 보안 헤더
+      - "traefik.http.middlewares.secure-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.secure-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.secure-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.secure-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
     networks:
       - traefik-net
 

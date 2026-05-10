@@ -38,3 +38,4 @@ services:
       - "traefik.http.routers.sws.entrypoints=websecure"
       - "traefik.http.routers.sws.tls.certresolver=myresolver"
       - "traefik.http.services.sws.loadbalancer.server.port=8080"
+      - "traefik.http.routers.sws.middlewares=rate-limit@docker,body-limit@docker,secure-headers@docker"
