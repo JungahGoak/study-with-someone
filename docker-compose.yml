@@ -1,7 +1,153 @@
+# Production
+# Prerequisites:
+#   mkdir -p letsencrypt && touch letsencrypt/acme.json && chmod 600 letsencrypt/acme.json
+#   EC2 Security Group: port 8080 을 본인 IP로만 허용 (Traefik dashboard 접근용)
+#
+# Required .env variables:
+#   SWS_IMAGE, DOMAIN, ACME_EMAIL, REDIS_*, FRONT_URL
+
 services:
+
+  traefik:
+    image: traefik:v3.7
+    container_name: traefik
+    restart: unless-stopped
+    # 컨테이너 내부 프로세스가 setuid/setgid로 권한 상승하는 것을 OS 레벨에서 차단
+    security_opt:
+      - no-new-privileges:true
+    # 로그 파일이 무제한 증가해 디스크를 고갈시키는 것을 방지
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    command:
+      # ── Providers ────────────────────────────────────────────────────────────
+      # Docker 컨테이너를 자동으로 감지해 라우팅 규칙 생성
+      - "--providers.docker=true"
+      # labels 없는 컨테이너는 라우팅에서 제외 (traefik.enable=true 명시 필요)
+      - "--providers.docker.exposedbydefault=false"
+      # 컨테이너가 여러 네트워크에 연결된 경우 Traefik이 사용할 네트워크 명시
+      # 지정하지 않으면 Traefik이 임의의 네트워크 IP로 라우팅해 연결 실패 가능
+      - "--providers.docker.network=traefik-net"
+
+      # ── EntryPoints ──────────────────────────────────────────────────────────
+      # HTTP (80) 진입점 정의
+      - "--entrypoints.web.address=:80"
+      # HTTP → HTTPS 리다이렉트 대상 진입점
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      # 리다이렉트 시 https scheme으로 변경
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      # 301 영구 리다이렉트 (브라우저 캐시 → 이후 요청은 바로 HTTPS로)
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      # HTTPS (443) 진입점 정의
+      - "--entrypoints.websecure.address=:443"
+
+      # ── CertificatesResolvers ────────────────────────────────────────────────
+      # HTTP-01 Challenge 방식으로 Let's Encrypt 인증서 자동 발급/갱신
+      # TLS-ALPN-01 대비 안정적 — port 80으로 검증, Traefik이 /.well-known/acme-challenge/ 자동 처리
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      # 인증서 만료 알림을 받을 이메일
+      - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}"
+      # 발급된 인증서 저장 경로 (volume으로 마운트해 컨테이너 재시작 시 유지)
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+
+      # ── API & Dashboard ──────────────────────────────────────────────────────
+      # Traefik 대시보드 활성화 (라우터·서비스·미들웨어 현황 시각화)
+      - "--api.dashboard=true"
+      # 인증 없이 8080 포트로 대시보드 접근 허용
+      # 보안: EC2 Security Group에서 8080 포트를 본인 IP로만 허용해 외부 차단
+      - "--api.insecure=true"
+
+      # ── Observability ────────────────────────────────────────────────────────
+      # Traefik 내부 로그 레벨 (DEBUG / INFO / WARN / ERROR)
+      - "--log.level=INFO"
+      # 모든 HTTP 요청/응답 로그 기록 (IP, 상태코드, 응답시간 등)
+      - "--accesslog=true"
+      # /ping 엔드포인트 활성화 → healthcheck에서 사용
+      - "--ping=true"
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    ports:
+      - "80:80"     # HTTP (HTTPS 리다이렉트용)
+      - "443:443"   # HTTPS
+      - "8080:8080" # Traefik 대시보드 (EC2 SG로 IP 제한)
+    volumes:
+      # Docker 소켓 마운트 — 컨테이너 이벤트 감지용 (읽기 전용)
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      # Let's Encrypt 인증서 영속화 (재시작 시 재발급 방지)
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - traefik-net
+
   spring:
     image: ${SWS_IMAGE}:latest
+    container_name: sws
     env_file: .env
-    ports:
-      - "8080:8080"
     restart: unless-stopped
+    # 컨테이너 내부 프로세스가 setuid/setgid로 권한 상승하는 것을 OS 레벨에서 차단
+    security_opt:
+      - no-new-privileges:true
+    # 로그 파일이 무제한 증가해 디스크를 고갈시키는 것을 방지
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:19000/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s  # Spring Boot 기동 시간 확보
+    labels:
+      # 이 컨테이너를 Traefik 라우팅 대상으로 등록
+      - "traefik.enable=true"
+
+      # ── App Router ───────────────────────────────────────────────────────────
+      # ${DOMAIN} 호스트로 들어오는 요청을 이 서비스로 라우팅
+      - "traefik.http.routers.sws.rule=Host(`${DOMAIN}`)"
+      # HTTPS 진입점에서만 수신
+      - "traefik.http.routers.sws.entrypoints=websecure"
+      # myresolver로 TLS 인증서 자동 발급
+      - "traefik.http.routers.sws.tls.certresolver=myresolver"
+      # 컨테이너 내부 포트 (Traefik → Spring Boot)
+      - "traefik.http.services.sws.loadbalancer.server.port=8080"
+      # 이 라우터에 적용할 미들웨어 체인
+      - "traefik.http.routers.sws.middlewares=rate-limit@docker,body-limit@docker,secure-headers@docker"
+
+      # ── Rate Limit ───────────────────────────────────────────────────────────
+      # IP당 평균 20req/s 허용, 순간 최대 30개 버스트
+      # WebSocket handshake도 HTTP 요청이므로 여유 있게 설정
+      - "traefik.http.middlewares.rate-limit.ratelimit.average=20"
+      - "traefik.http.middlewares.rate-limit.ratelimit.burst=30"
+      - "traefik.http.middlewares.rate-limit.ratelimit.period=1s"
+
+      # ── Body Limit ───────────────────────────────────────────────────────────
+      # 요청 크기 64KB 제한 (WebRTC signaling 메시지는 SDP/ICE로 수 KB 수준)
+      - "traefik.http.middlewares.body-limit.buffering.maxRequestBodyBytes=65536"
+
+      # ── Secure Headers ───────────────────────────────────────────────────────
+      # XSS 공격 차단 (구형 브라우저용 X-XSS-Protection 헤더)
+      - "traefik.http.middlewares.secure-headers.headers.browserXssFilter=true"
+      # MIME 타입 스니핑 차단 (Content-Type 위조 방지)
+      - "traefik.http.middlewares.secure-headers.headers.contentTypeNosniff=true"
+      # 클릭재킹 차단 (X-Frame-Options: DENY)
+      - "traefik.http.middlewares.secure-headers.headers.frameDeny=true"
+      # Referer 헤더 정책: 동일 출처엔 full URL, 외부엔 origin만 전송
+      - "traefik.http.middlewares.secure-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
+      # HSTS: 브라우저에게 1년간 HTTPS만 사용하도록 강제 (301 리다이렉트를 건너뜀)
+      - "traefik.http.middlewares.secure-headers.headers.stsSeconds=31536000"
+      # 서브도메인에도 HSTS 적용
+      - "traefik.http.middlewares.secure-headers.headers.stsIncludeSubdomains=true"
+    networks:
+      - traefik-net
+
+networks:
+  traefik-net:
+    driver: bridge
