@@ -2,3 +2,5 @@ services:
   spring:
     build: .
     image: ~
+    labels:
+      - "traefik.http.routers.sws.rule=Host(`localhost`)"
