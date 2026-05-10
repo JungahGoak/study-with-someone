@@ -44,8 +44,10 @@ services:
       - "--entrypoints.websecure.address=:443"
 
       # ── CertificatesResolvers ────────────────────────────────────────────────
-      # TLS Challenge 방식으로 Let's Encrypt 인증서 자동 발급/갱신
-      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      # HTTP-01 Challenge 방식으로 Let's Encrypt 인증서 자동 발급/갱신
+      # TLS-ALPN-01 대비 안정적 — port 80으로 검증, Traefik이 /.well-known/acme-challenge/ 자동 처리
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
       # 인증서 만료 알림을 받을 이메일
       - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}"
       # 발급된 인증서 저장 경로 (volume으로 마운트해 컨테이너 재시작 시 유지)
@@ -98,7 +100,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:19000/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
