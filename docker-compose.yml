@@ -1,13 +1,25 @@
+# Production
+# Prerequisites:
+#   mkdir -p letsencrypt && touch letsencrypt/acme.json && chmod 600 letsencrypt/acme.json
+# Required .env variables:
+#   SWS_IMAGE, DOMAIN, ACME_EMAIL, REDIS_*, FRONT_URL
+
 services:
 
   traefik:
-    image: traefik:v3.6.2
+    image: traefik:v3.7
     container_name: traefik
     restart: unless-stopped
     command:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
       - "--api.dashboard=true"
       - "--api.insecure=true"
       - "--log.level=INFO"
@@ -20,9 +32,11 @@ services:
       start_period: 10s
     ports:
       - "80:80"
+      - "443:443"
       - "8080:8080"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
     networks:
       - traefik-net
 
@@ -40,7 +54,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.sws.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.sws.entrypoints=web"
+      - "traefik.http.routers.sws.entrypoints=websecure"
+      - "traefik.http.routers.sws.tls.certresolver=myresolver"
       - "traefik.http.services.sws.loadbalancer.server.port=8080"
       - "traefik.http.routers.sws.middlewares=rate-limit@docker,body-limit@docker,secure-headers@docker"
 

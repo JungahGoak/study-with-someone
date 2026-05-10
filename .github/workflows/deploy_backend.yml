@@ -66,7 +66,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "docker-compose.yml,docker-compose.prod.yml"
+          source: "docker-compose.yml"
           target: "~/sws"
 
       - name: Deploy via SSH
@@ -97,8 +97,8 @@ jobs:
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+            docker compose pull
+            docker compose up -d --remove-orphans
 
             # Spring Boot 헬스체크 대기 (최대 90초)
             echo "Waiting for Spring Boot to become healthy..."
@@ -112,7 +112,7 @@ jobs:
               sleep 5
               if [ "$i" = "18" ]; then
                 echo "ERROR: sws did not become healthy within 90s"
-                docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=50 spring
+                docker compose logs --tail=50 spring
                 exit 1
               fi
             done
