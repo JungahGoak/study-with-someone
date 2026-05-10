@@ -95,6 +95,8 @@ jobs:
 
             export SWS_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}"
 
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull spring
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 
