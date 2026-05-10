@@ -68,7 +68,6 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "docker-compose.yml,docker-compose.prod.yml"
           target: "~/sws"
-          strip_components: 1
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v0.1.7
