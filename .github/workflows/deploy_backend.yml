@@ -2,9 +2,9 @@ name: CI/CD — Build & Deploy
 
 on:
   push:
-    branches: ["infra/docker-compose-setup-and-traefik"]
+    branches: ["main"]
   pull_request:
-    branches: ["infra/docker-compose-setup-and-traefik"]
+    branches: ["main"]
 
 jobs:
   build_and_push:
